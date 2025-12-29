@@ -1,5 +1,8 @@
 # This file is public domain, it can be freely copied without restrictions.
 # SPDX-License-Identifier: CC0-1.0
+
+#pytest+runner的启动脚本
+
 from __future__ import annotations
 
 import os
@@ -27,6 +30,7 @@ def test_matrix_multiplier_runner():
 
     build_args = []
 
+    # 选择待编译的HDL编码
     if hdl_toplevel_lang == "verilog":
         sources = [proj_path / "hdl" / "matrix_multiplier.sv"]
 
@@ -54,6 +58,7 @@ def test_matrix_multiplier_runner():
     elif sim == "xcelium":
         extra_args = ["-v200x"]
 
+    # 设置仿真参数
     parameters = {
         "DATA_WIDTH": "32",
         "A_ROWS": 10,
@@ -64,6 +69,7 @@ def test_matrix_multiplier_runner():
     # equivalent to setting the PYTHONPATH environment variable
     sys.path.append(str(proj_path / "tests"))
 
+    # 启动runner
     runner = get_runner(sim)
 
     runner.build(
