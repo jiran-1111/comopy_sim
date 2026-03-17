@@ -30,14 +30,17 @@ static verilated_trace_t *tfp;
 
 static vluint64_t main_time = 0;  // Current simulation time
 
+// 仿真时间戳
 double sc_time_stamp() {  // Called by $time in Verilog
     return main_time;     // converts to double, to match
                           // what SystemC does
 }
 
+// 初始化和清理
 extern "C" {
 void vlog_startup_routines_bootstrap(void);
 }
+
 
 static inline bool settle_value_callbacks() {
     bool cbs_called, again;
@@ -70,6 +73,8 @@ void wrap_up() {
                             // defaults to coverage.dat
 #endif
 }
+
+
 
 int main(int argc, char **argv) {
 #if VM_TRACE_FST

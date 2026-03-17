@@ -5,12 +5,21 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include <gpi.h>
-#include <vpi_user_ext.h>
+#include <vpi_user_ext.h> // 仿真器提供的标准接口
 
 #include <cassert>
 
 #include "./VpiImpl.hpp"
 
+/*
+IEEE VPI 标准定义
+void vpi_put_value(
+    vpiHandle obj,         句柄
+    s_vpi_value* value,    值 format数据类型 value实际数据
+    s_vpi_time* time,      时间
+    int flags              行为 vpiNoDeLay\vpiInertialDelay\vpiForce\vpiRelease
+);
+*/
 int VpiSignalObjHdl::initialise(const std::string &name,
                                 const std::string &fq_name) {
     int32_t type = vpi_get(vpiType, GpiObjHdl::get_handle<vpiHandle>());
@@ -96,6 +105,8 @@ int VpiSignalObjHdl::initialise(const std::string &name,
     return GpiObjHdl::initialise(name, fq_name);
 }
 
+
+// 读信号
 const char *VpiSignalObjHdl::get_signal_value_binstr() {
     s_vpi_value value_s = {vpiBinStrVal, {NULL}};
 
@@ -132,7 +143,10 @@ long VpiSignalObjHdl::get_signal_value_long() {
     return value_s.value.integer;
 }
 
+
 // Value related functions
+// 写信号
+// 把不同类型的数据转成统一格式 s_vpi_value
 int VpiSignalObjHdl::set_signal_value(int32_t value, gpi_set_action action) {
     s_vpi_value value_s;
 
@@ -186,6 +200,8 @@ int VpiSignalObjHdl::set_signal_value(s_vpi_value value_s,
     vpi_time_s.high = 0;
     vpi_time_s.low = 0;
 
+    // 根据action选行为 falgs参数
+                            
     switch (action) {
         case GPI_DEPOSIT:
 #if defined(MODELSIM) || defined(IUS)
@@ -215,7 +231,7 @@ int VpiSignalObjHdl::set_signal_value(s_vpi_value value_s,
         default:
             assert(0);
     }
-
+    // 最终调用仿真器 改仿真器里的信号
     if (vpi_put_flag == vpiNoDelay) {
         vpi_put_value(GpiObjHdl::get_handle<vpiHandle>(), &value_s, NULL,
                       vpiNoDelay);
@@ -228,7 +244,7 @@ int VpiSignalObjHdl::set_signal_value(s_vpi_value value_s,
 
     return 0;
 }
-
+// 信号变化->回调函数
 GpiCbHdl *VpiSignalObjHdl::register_value_change_callback(
     gpi_edge edge, int (*cb_func)(void *), void *cb_data) {
     VpiValueCbHdl *cb_hdl = new VpiValueCbHdl(this->m_impl, this, edge);

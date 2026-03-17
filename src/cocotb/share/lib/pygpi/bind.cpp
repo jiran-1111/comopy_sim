@@ -159,7 +159,8 @@ struct sim_time {
  * are waiting on that particular trigger.
  *
  */
-int handle_gpi_callback(void *user_data) {
+//用于其他callback的处理
+ int handle_gpi_callback(void *user_data) {
     PYGPI_LOG_TRACE("GPI => [ PYGPI (cocotb.simulator) ]");
     DEFER(PYGPI_LOG_TRACE("[ PYGPI (cocotb.simulator) ] => GPI"));
     c_to_python();
@@ -197,6 +198,7 @@ int handle_gpi_callback(void *user_data) {
 // Register a callback for read-only state of sim
 // First argument is the function to call
 // Remaining arguments are keyword arguments to be passed to the callback
+//register_readonly_callback 109
 static PyObject *register_readonly_callback(PyObject *, PyObject *args) {
     if (!gpi_has_registered_impl()) {
         PyErr_SetString(PyExc_RuntimeError, "No simulator available!");
@@ -237,7 +239,7 @@ static PyObject *register_readonly_callback(PyObject *, PyObject *args) {
 
     return rv;
 }
-
+//register_rwsynch_callback 111
 static PyObject *register_rwsynch_callback(PyObject *, PyObject *args) {
     if (!gpi_has_registered_impl()) {
         PyErr_SetString(PyExc_RuntimeError, "No simulator available!");
@@ -278,7 +280,7 @@ static PyObject *register_rwsynch_callback(PyObject *, PyObject *args) {
 
     return rv;
 }
-
+//register_nextstep_callback 107
 static PyObject *register_nextstep_callback(PyObject *, PyObject *args) {
     if (!gpi_has_registered_impl()) {
         PyErr_SetString(PyExc_RuntimeError, "No simulator available!");
@@ -320,6 +322,7 @@ static PyObject *register_nextstep_callback(PyObject *, PyObject *args) {
     return rv;
 }
 
+//register_timed_callback 113
 // Register a timed callback.
 // First argument should be the time in picoseconds
 // Second argument is the function to call
@@ -381,6 +384,7 @@ static PyObject *register_timed_callback(PyObject *, PyObject *args) {
     return rv;
 }
 
+//register_value_change_callback 117
 // Register signal change callback
 // First argument should be the signal handle
 // Second argument is the function to call
@@ -439,7 +443,7 @@ static PyObject *register_value_change_callback(
 
     return rv;
 }
-
+//82
 static PyObject *iterate(gpi_hdl_Object<gpi_sim_hdl> *self, PyObject *args) {
     int type;
 
@@ -452,12 +456,13 @@ static PyObject *iterate(gpi_hdl_Object<gpi_sim_hdl> *self, PyObject *args) {
     return gpi_hdl_New(result);
 }
 
+//package_iertate 105
 static PyObject *package_iterate(PyObject *, PyObject *) {
     gpi_iterator_hdl result = gpi_iterate(NULL, GPI_PACKAGE_SCOPES);
 
     return gpi_hdl_New(result);
 }
-
+//61
 static PyObject *next(gpi_hdl_Object<gpi_iterator_hdl> *self) {
     gpi_sim_hdl result = gpi_next(self->hdl);
 
@@ -472,7 +477,7 @@ static PyObject *next(gpi_hdl_Object<gpi_iterator_hdl> *self) {
 
 // Raise an exception on failure
 // Return None if for example get bin_string on enum?
-
+//76
 static PyObject *get_signal_val_binstr(gpi_hdl_Object<gpi_sim_hdl> *self,
                                        PyObject *) {
     const char *result = gpi_get_signal_value_binstr(self->hdl);
@@ -485,7 +490,7 @@ static PyObject *get_signal_val_binstr(gpi_hdl_Object<gpi_sim_hdl> *self,
     }
     return PyUnicode_FromString(result);
 }
-
+//79
 static PyObject *get_signal_val_str(gpi_hdl_Object<gpi_sim_hdl> *self,
                                     PyObject *) {
     const char *result = gpi_get_signal_value_str(self->hdl);
@@ -498,19 +503,19 @@ static PyObject *get_signal_val_str(gpi_hdl_Object<gpi_sim_hdl> *self,
     }
     return PyBytes_FromString(result);
 }
-
+//78
 static PyObject *get_signal_val_real(gpi_hdl_Object<gpi_sim_hdl> *self,
                                      PyObject *) {
     double result = gpi_get_signal_value_real(self->hdl);
     return PyFloat_FromDouble(result);
 }
-
+//77
 static PyObject *get_signal_val_long(gpi_hdl_Object<gpi_sim_hdl> *self,
                                      PyObject *) {
     long result = gpi_get_signal_value_long(self->hdl);
     return PyLong_FromLong(result);
 }
-
+//83
 static PyObject *set_signal_val_binstr(gpi_hdl_Object<gpi_sim_hdl> *self,
                                        PyObject *args) {
     const char *binstr;
@@ -523,7 +528,7 @@ static PyObject *set_signal_val_binstr(gpi_hdl_Object<gpi_sim_hdl> *self,
     gpi_set_signal_value_binstr(self->hdl, binstr, action);
     Py_RETURN_NONE;
 }
-
+//86
 static PyObject *set_signal_val_str(gpi_hdl_Object<gpi_sim_hdl> *self,
                                     PyObject *args) {
     gpi_set_action action;
@@ -536,7 +541,7 @@ static PyObject *set_signal_val_str(gpi_hdl_Object<gpi_sim_hdl> *self,
     gpi_set_signal_value_str(self->hdl, str, action);
     Py_RETURN_NONE;
 }
-
+//85
 static PyObject *set_signal_val_real(gpi_hdl_Object<gpi_sim_hdl> *self,
                                      PyObject *args) {
     double value;
@@ -549,7 +554,7 @@ static PyObject *set_signal_val_real(gpi_hdl_Object<gpi_sim_hdl> *self,
     gpi_set_signal_value_real(self->hdl, value, action);
     Py_RETURN_NONE;
 }
-
+//84
 static PyObject *set_signal_val_int(gpi_hdl_Object<gpi_sim_hdl> *self,
                                     PyObject *args) {
     long long value;
@@ -562,19 +567,19 @@ static PyObject *set_signal_val_int(gpi_hdl_Object<gpi_sim_hdl> *self,
     gpi_set_signal_value_int(self->hdl, static_cast<int32_t>(value), action);
     Py_RETURN_NONE;
 }
-
+//67
 static PyObject *get_definition_name(gpi_hdl_Object<gpi_sim_hdl> *self,
                                      PyObject *) {
     const char *result = gpi_get_definition_name(self->hdl);
     return PyUnicode_FromString(result);
 }
-
+//66
 static PyObject *get_definition_file(gpi_hdl_Object<gpi_sim_hdl> *self,
                                      PyObject *) {
     const char *result = gpi_get_definition_file(self->hdl);
     return PyUnicode_FromString(result);
 }
-
+//69
 static PyObject *get_handle_by_name(gpi_hdl_Object<gpi_sim_hdl> *self,
                                     PyObject *args) {
     const char *name;
@@ -600,7 +605,7 @@ static PyObject *get_handle_by_name(gpi_hdl_Object<gpi_sim_hdl> *self,
 
     return gpi_hdl_New(result);
 }
-
+//68
 static PyObject *get_handle_by_index(gpi_hdl_Object<gpi_sim_hdl> *self,
                                      PyObject *args) {
     int32_t index;
@@ -614,6 +619,7 @@ static PyObject *get_handle_by_index(gpi_hdl_Object<gpi_sim_hdl> *self,
     return gpi_hdl_New(result);
 }
 
+//get_root_handle 93
 static PyObject *get_root_handle(PyObject *, PyObject *args) {
     const char *name;
 
@@ -633,29 +639,29 @@ static PyObject *get_root_handle(PyObject *, PyObject *args) {
 
     return gpi_hdl_New(result);
 }
-
+//73
 static PyObject *get_name_string(gpi_hdl_Object<gpi_sim_hdl> *self,
                                  PyObject *) {
     const char *result = gpi_get_signal_name_str(self->hdl);
     return PyUnicode_FromString(result);
 }
-
+//80
 static PyObject *get_type(gpi_hdl_Object<gpi_sim_hdl> *self, PyObject *) {
     gpi_objtype result = gpi_get_object_type(self->hdl);
     return PyLong_FromLong(result);
 }
-
+//65
 static PyObject *get_const(gpi_hdl_Object<gpi_sim_hdl> *self, PyObject *) {
     int result = gpi_is_constant(self->hdl);
     return PyBool_FromLong(result);
 }
-
+//81
 static PyObject *get_type_string(gpi_hdl_Object<gpi_sim_hdl> *self,
                                  PyObject *) {
     const char *result = gpi_get_signal_type_str(self->hdl);
     return PyUnicode_FromString(result);
 }
-
+//is_running 101
 static PyObject *is_running(PyObject *, PyObject *) {
     return PyBool_FromLong(gpi_has_registered_impl());
 }
@@ -663,6 +669,7 @@ static PyObject *is_running(PyObject *, PyObject *) {
 // Returns a high, low, tuple of simulator time
 // Note we can never log from this function since the logging mechanism calls
 // this to annotate log messages with the current simulation time
+// get_sim_time 95
 static PyObject *get_sim_time(PyObject *, PyObject *) {
     if (!gpi_has_registered_impl()) {
         PyErr_SetString(PyExc_RuntimeError, "No simulator available!");
@@ -686,7 +693,7 @@ static PyObject *get_sim_time(PyObject *, PyObject *) {
 
     return pTuple;
 }
-
+//get_precision 91
 static PyObject *get_precision(PyObject *, PyObject *) {
     if (!gpi_has_registered_impl()) {
         char const *msg =
@@ -703,7 +710,7 @@ static PyObject *get_precision(PyObject *, PyObject *) {
 
     return PyLong_FromLong(precision);
 }
-
+//get_simulator_product 97
 static PyObject *get_simulator_product(PyObject *, PyObject *) {
     if (!gpi_has_registered_impl()) {
         PyErr_SetString(PyExc_RuntimeError, "No simulator available!");
@@ -712,7 +719,7 @@ static PyObject *get_simulator_product(PyObject *, PyObject *) {
 
     return PyUnicode_FromString(gpi_get_simulator_product());
 }
-
+//get_simulator_version 99
 static PyObject *get_simulator_version(PyObject *, PyObject *) {
     if (!gpi_has_registered_impl()) {
         PyErr_SetString(PyExc_RuntimeError, "No simulator available!");
@@ -721,12 +728,12 @@ static PyObject *get_simulator_version(PyObject *, PyObject *) {
 
     return PyUnicode_FromString(gpi_get_simulator_version());
 }
-
+//74
 static PyObject *get_num_elems(gpi_hdl_Object<gpi_sim_hdl> *self, PyObject *) {
     int elems = gpi_get_num_elems(self->hdl);
     return PyLong_FromLong(elems);
 }
-
+//75
 static PyObject *get_range(gpi_hdl_Object<gpi_sim_hdl> *self, PyObject *) {
     int rng_left = gpi_get_range_left(self->hdl);
     int rng_right = gpi_get_range_right(self->hdl);
@@ -734,13 +741,13 @@ static PyObject *get_range(gpi_hdl_Object<gpi_sim_hdl> *self, PyObject *) {
 
     return Py_BuildValue("(i,i,i)", rng_left, rng_right, rng_dir);
 }
-
+//72
 static PyObject *get_indexable(gpi_hdl_Object<gpi_sim_hdl> *self, PyObject *) {
     int indexable = gpi_is_indexable(self->hdl);
 
     return PyBool_FromLong(indexable);
 }
-
+//stop_simulator 121
 static PyObject *stop_simulator(PyObject *, PyObject *) {
     if (!gpi_has_registered_impl()) {
         PyErr_SetString(PyExc_RuntimeError, "No simulator available!");
@@ -750,7 +757,7 @@ static PyObject *stop_simulator(PyObject *, PyObject *) {
     gpi_finish();
     Py_RETURN_NONE;
 }
-
+//50
 static PyObject *deregister(gpi_hdl_Object<gpi_cb_hdl> *self, PyObject *) {
     // cleanup uncalled callback
     void *cb_data;
@@ -763,7 +770,7 @@ static PyObject *deregister(gpi_hdl_Object<gpi_cb_hdl> *self, PyObject *) {
 
     Py_RETURN_NONE;
 }
-
+//set_gpi_log_level 103
 static PyObject *set_gpi_log_level(PyObject *, PyObject *args) {
     int l_level;
 
@@ -775,7 +782,7 @@ static PyObject *set_gpi_log_level(PyObject *, PyObject *args) {
 
     Py_RETURN_NONE;
 }
-
+//initialize_logger 132
 static PyObject *initialize_logger(PyObject *, PyObject *args) {
     PyObject *log_func;
     PyObject *get_logger;
@@ -786,7 +793,7 @@ static PyObject *initialize_logger(PyObject *, PyObject *args) {
     py_gpi_logger_initialize(log_func, get_logger);
     Py_RETURN_NONE;
 }
-
+//set_sim_event_callback 137
 static PyObject *set_sim_event_callback(PyObject *, PyObject *args) {
     if (pEventFn) {
         PyErr_SetString(PyExc_RuntimeError,
@@ -803,7 +810,7 @@ static PyObject *set_sim_event_callback(PyObject *, PyObject *args) {
     pEventFn = sim_event_callback;
     Py_RETURN_NONE;
 }
-
+//cpp_clock 123?
 class GpiClock {
   public:
     GpiClock(GpiObjHdl *clk_sig) : clk_signal(clk_sig) {}
@@ -895,6 +902,7 @@ int GpiClock::toggle_cb(void *gpi_clk) {
 }
 
 // Create a new clock object
+// clock_create 130
 static PyObject *clock_create(PyObject *, PyObject *args) {
     if (!gpi_has_registered_impl()) {
         // LCOV_EXCL_START
@@ -1064,6 +1072,7 @@ static int add_module_types(PyObject *simulator) {
  * __text_signature__.
  */
 
+//映射表 17个
 static PyMethodDef SimulatorMethods[] = {
     {"get_root_handle", get_root_handle, METH_VARARGS,
      PyDoc_STR("get_root_handle(name, /)\n"
@@ -1212,6 +1221,7 @@ PyMODINIT_FUNC PyInit_simulator(void) {
         // LCOV_EXCL_STOP
     }
 
+    // 注册一个名为simulator的模块
     PyObject *simulator = PyModule_Create(&moduledef);
     if (simulator == NULL) {
         return NULL;
@@ -1356,6 +1366,7 @@ static PyMethodDef gpi_sim_hdl_methods[] = {
 };
 
 // putting these at the bottom means that all the functions above are accessible
+////python中gpi_sim_hdl类的定义
 template <>
 PyTypeObject gpi_hdl_Object<gpi_sim_hdl>::py_type = []() -> PyTypeObject {
     auto type = fill_common_slots<gpi_sim_hdl>();
@@ -1368,7 +1379,7 @@ PyTypeObject gpi_hdl_Object<gpi_sim_hdl>::py_type = []() -> PyTypeObject {
     type.tp_methods = gpi_sim_hdl_methods;
     return type;
 }();
-
+//python中gpi_iterator_hdl类的定义
 template <>
 PyTypeObject gpi_hdl_Object<gpi_iterator_hdl>::py_type = []() -> PyTypeObject {
     auto type = fill_common_slots<gpi_iterator_hdl>();
@@ -1387,7 +1398,7 @@ static PyMethodDef gpi_cb_hdl_methods[] = {
                "De-register this callback.")},
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
-
+//python中gpi_cd_hdl类的定义
 template <>
 PyTypeObject gpi_hdl_Object<gpi_cb_hdl>::py_type = []() -> PyTypeObject {
     auto type = fill_common_slots<gpi_cb_hdl>();

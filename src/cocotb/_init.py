@@ -97,6 +97,7 @@ def init_package_from_simulation(argv: list[str]) -> None:
     )
 
 
+# 启动测试 调用strart_regression()
 def run_regression(_: object) -> None:
     """Setup and run a regression."""
 
@@ -247,6 +248,7 @@ def _setup_random_seed() -> None:
     random.seed(cocotb.RANDOM_SEED)
 
 
+# 对象树建立 dut产生
 def _setup_root_handle() -> None:
     root_name = os.getenv("COCOTB_TOPLEVEL")
     if root_name is not None:
@@ -266,6 +268,7 @@ def _setup_root_handle() -> None:
     cocotb.top = cocotb.handle._make_sim_object(handle)
 
 
+# 测试发现与过滤 扫描@cocotb.test()
 def _setup_regression_manager() -> None:
     cocotb._regression_manager = RegressionManager()
 
@@ -277,6 +280,7 @@ def _setup_regression_manager() -> None:
         )
     modules = [s.strip() for s in module_str.split(",") if s.strip()]
     cocotb._regression_manager.setup_pytest_assertion_rewriting()
+    
     cocotb._regression_manager.discover_tests(*modules)
 
     # filter tests

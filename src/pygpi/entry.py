@@ -8,15 +8,15 @@ from typing import Callable
 
 def load_entry(argv: list[str]) -> None:
     """Gather entry point information by parsing :envvar:`PYGPI_USERS`."""
-
+    # 读取环境变量
     entry_point_str = os.environ.get(
         "PYGPI_USERS",
         ",".join(
             (
-                "cocotb_tools._coverage:start_cocotb_library_coverage",
-                "cocotb.logging:_configure",
-                "cocotb._init:init_package_from_simulation",
-                "cocotb._init:run_regression",
+                "cocotb_tools._coverage:start_cocotb_library_coverage", # 代码覆盖率
+                "cocotb.logging:_configure",  # 初始化日志系统
+                "cocotb._init:init_package_from_simulation", # 初始化cocotb.simulator
+                "cocotb._init:run_regression", # 启动test的地方
             )
         ),
     )
@@ -36,6 +36,7 @@ def load_entry(argv: list[str]) -> None:
 
     # Run all entry points.
     # Expect failure to stop the loading of any additional entry points.
+    # 动态import模块
     for entry_module_str, entry_func_str in entry_points:
         entry_module = importlib.import_module(entry_module_str)
         entry_func: Callable[[list[str]], object] = operator.attrgetter(entry_func_str)(

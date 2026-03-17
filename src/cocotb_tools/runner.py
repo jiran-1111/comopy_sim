@@ -184,6 +184,7 @@ class Runner(ABC):
             SystemExit: Simulator executable does not exist in :envvar:`PATH`.
         """
 
+    # 自动判断语言
     def _check_hdl_toplevel_lang(self, hdl_toplevel_lang: str | None) -> str:
         """Return *hdl_toplevel_lang* if supported by simulator, raise exception otherwise.
 
@@ -224,6 +225,7 @@ class Runner(ABC):
                 f"in supported list: {', '.join(self.supported_gpi_interfaces)}"
             )
 
+    # 设置环境变量
     def _set_env_common(self) -> None:
         # We have to set all environment variables before building because Xcelium and VCS load VPI for some reason.
         # TODO: Remove this. Why are Xcelium and VCS loading VPI during build?
@@ -652,7 +654,12 @@ class Runner(ABC):
 
             stderr = None if stdout is None else subprocess.STDOUT
             subprocess.run(
-                cmd, cwd=cwd, env=self.env, check=True, stdout=stdout, stderr=stderr
+                cmd, 
+                cwd=cwd, 
+                env=self.env, 
+                check=True, 
+                stdout=stdout, 
+                stderr=stderr
             )
 
     def rm_build_folder(self, build_dir: Path) -> None:
@@ -786,6 +793,8 @@ def get_abs_path(path: PathLike) -> Path:
         return Path(Path.cwd() / path).resolve()
 
 
+
+
 class Icarus(Runner):
     """Implementation of :class:`Runner` for Icarus Verilog.
 
@@ -796,19 +805,22 @@ class Icarus(Runner):
        * ``timescale`` argument to :meth:`.build` must be given to support dumping the command file.
        * Does not support the ``pre_cmd`` argument to :meth:`.test`.
     """
+    # 表示这个runner只支持verilog,使用vpi接口
 
     supported_gpi_interfaces = {"verilog": ["vpi"]}
 
+    # 检查是否安装仿真器
     def _simulator_in_path(self) -> None:
         if shutil.which("iverilog") is None:
             raise SystemExit("ERROR: iverilog executable not found!")
-
+    # include路径
     def _get_include_options(self, includes: Sequence[PathLike]) -> _Command:
         return [f"-I{include}" for include in includes]
 
+    # 宏定义
     def _get_define_options(self, defines: Mapping[str, object]) -> _Command:
         return [f"-D{name}={_as_sv_literal(value)}" for name, value in defines.items()]
-
+    # 参数
     def _get_parameter_options(self, parameters: Mapping[str, object]) -> _Command:
         return [
             f"-P{self.hdl_toplevel}.{name}={value}"
@@ -820,12 +832,12 @@ class Icarus(Runner):
 
     def _waves_file(self) -> str | None:
         return f"{self.hdl_toplevel}.fst"
-
+    # 生成+timescale+1ns/1ps的命令文件
     def _create_cmd_file(self) -> None:
         assert self.timescale is not None
         with open(self.cmds_file, "w") as f:
             f.write("+timescale+{}/{}\n".format(*self.timescale))
-
+    # 自动开启波形dump 输出.fst文件
     def _create_iverilog_dump_file(self) -> None:
         dumpfile_path = _as_sv_literal(str(self.build_dir / f"{self.hdl_toplevel}.fst"))
         with open(self.iverilog_dump_file, "w") as f:
@@ -855,6 +867,7 @@ class Icarus(Runner):
     def cmds_file(self) -> Path:
         return self.build_dir / "cmds.f"
 
+    # 生成编译指令
     def _build_command(self) -> list[_Command]:
         if self.hdl_toplevel is None:
             raise ValueError("hdl_toplevel argument is required for all Icarus builds")
@@ -910,6 +923,10 @@ class Icarus(Runner):
 
         return cmds
 
+    # 生成运行指令 重点！！
+    # -m 参数加载了一个特殊的动态链接库（.so文件），这个库是专门为Icarus Verilog设计的，用于实现VPI接口。VPI接口允许Cocotb与Icarus Verilog进行交互，使得Cocotb能够控制仿真、访问信号、设置断点等。
+    # 这个库是gpi/vpi的中间层
+    # vvp启动时，他会加载cocotb的c++库，从而允许python代码通过这个库控制仿真器的步进、信号读取和写入
     def _test_command(self) -> list[_Command]:
         if self.pre_cmd is not None:
             raise RuntimeError("pre_cmd is not implemented for Icarus Verilog.")
@@ -921,15 +938,18 @@ class Icarus(Runner):
             # Disable waveform output
             plusargs += ["-none"]
 
+        # 返回vvp命令
         return [
             [
                 "vvp",
                 "-M",
+                # 模块的搜索目录，告诉vvp在这个目录下寻找需要加载的模块（.so文件）
                 str(cocotb_tools.config.libs_dir),
                 "-m",
                 cocotb_tools.config.lib_name("vpi", "icarus"),
+                # 加载.so库 启用vpi接口
                 *self.test_args,
-                str(self.sim_file),
+                str(self.sim_file), # 运行编译生成的sim.vvp文件
                 *plusargs,
             ]
         ]
@@ -2070,7 +2090,8 @@ def get_runner(simulator_name: str) -> Runner:
     Raises:
         ValueError: If *simulator_name* is not one of the supported simulators or an alias of one.
     """
-
+    # 一共实现了10个仿真器的runner的映射
+    # 分别是icarus、questa、ghdl、riviera、activehdl、verilator、xcelium、nvc、vcs和dsim
     supported_sims: dict[str, type[Runner]] = {
         "icarus": Icarus,
         "questa": Questa,
@@ -2082,10 +2103,11 @@ def get_runner(simulator_name: str) -> Runner:
         "nvc": Nvc,
         "vcs": Vcs,
         "dsim": Dsim,
+        
         # TODO: "activehdl": ActiveHdl,
     }
     try:
-        return supported_sims[simulator_name]()
+        return supported_sims[simulator_name]() # 返回一个icarus的runner实例
     except KeyError:
         raise ValueError(
             f"Simulator {simulator_name!r} is not in supported list: {', '.join(supported_sims)}"

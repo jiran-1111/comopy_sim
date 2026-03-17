@@ -24,6 +24,7 @@ from typing import (
 )
 
 from cocotb import simulator
+# 实际引用的是simulator.so扩展
 from cocotb._base_triggers import TriggerCallback
 from cocotb._deprecation import deprecated
 from cocotb._gpi_triggers import (

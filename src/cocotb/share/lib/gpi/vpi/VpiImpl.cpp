@@ -9,6 +9,7 @@
 #include <gpi_logging.h>
 #include <vpi_user_ext.h>
 
+// vpi标准头文件
 #include "_vendor/vpi/vpi_user.h"
 
 #define CASE_STR(_X) \
@@ -33,6 +34,7 @@ const char *VpiImpl::reason_to_string(int reason) {
 
 #undef CASE_STR
 
+// 获取仿真时间
 void VpiImpl::get_sim_time(uint32_t *high, uint32_t *low) {
     s_vpi_time vpi_time_s;
     vpi_time_s.type = vpiSimTime;  // vpiSimTime;
@@ -42,10 +44,12 @@ void VpiImpl::get_sim_time(uint32_t *high, uint32_t *low) {
     *low = vpi_time_s.low;
 }
 
+// 获取仿真时间精度
 void VpiImpl::get_sim_precision(int32_t *precision) {
     *precision = vpi_get(vpiTimePrecision, NULL);
 }
 
+// 获取仿真器的产品名称和版本
 const char *VpiImpl::get_simulator_product() {
     if (m_product.empty() && m_version.empty()) {
         s_vpi_vlog_info info;

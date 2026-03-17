@@ -43,6 +43,7 @@ from cocotb._xunit_reporter import XUnitReporter, bin_xml_escape
 from cocotb.logging import ANSI
 from cocotb.simtime import get_sim_time
 from cocotb.task import Task
+# 管理测试
 
 __all__ = (
     "RegressionManager",
@@ -316,6 +317,7 @@ class RegressionManager:
         self._first_test = True
         self._execute()
 
+    # 执行测试
     def _execute(self) -> None:
         """Run the main regression loop.
 

@@ -5,7 +5,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 // Embed Python into the simulator using GPI
-
 #include <Python.h>
 #include <gpi.h>  // gpi_register_*
 
@@ -86,6 +85,11 @@ static int start_of_sim_time(void *, int, char const *const *);
 static void end_of_sim_time(void *);
 static void finalize(void *);
 
+
+// 在仿真器进程里启动python ,并在仿真开始时调用cocotb
+
+
+// 启动python解释器 加载.so库时自动执行的入口
 extern "C" PYGPI_EXPORT void initialize(void) {
     pygpi_init_debug();
 
@@ -105,6 +109,7 @@ extern "C" PYGPI_EXPORT void initialize(void) {
 
     static wchar_t interpreter_path[PATH_MAX], sys_executable[PATH_MAX];
 
+    // 设置python解释器路径
     if (get_interpreter_path(interpreter_path, sizeof(interpreter_path))) {
         // LCOV_EXCL_START
         return;
@@ -117,6 +122,7 @@ extern "C" PYGPI_EXPORT void initialize(void) {
     PyConfig config;
     PyStatus status;
 
+    // 配置并初始化python解释器
     PyConfig_InitPythonConfig(&config);
     DEFER(PyConfig_Clear(&config));
 
@@ -136,6 +142,7 @@ extern "C" PYGPI_EXPORT void initialize(void) {
         // LCOV_EXCL_STOP
     }
 
+    // 仿真器进程内部启动python
     status = Py_InitializeFromConfig(&config);
     if (PyStatus_Exception(status)) {
         // LCOV_EXCL_START
@@ -170,6 +177,7 @@ extern "C" PYGPI_EXPORT void initialize(void) {
         // LCOV_EXCL_STOP
     }
 
+    // 重要！！！！注册3个关键仿真回调
     gpi_register_start_of_sim_time_callback(start_of_sim_time, nullptr);
     gpi_register_end_of_sim_time_callback(end_of_sim_time, nullptr);
     gpi_register_finalize_callback(finalize, nullptr);
@@ -204,6 +212,7 @@ extern "C" PYGPI_EXPORT void initialize(void) {
     }
 }
 
+// 安全关闭python
 static void finalize(void *) {
     PYGPI_LOG_TRACE("GPI Finalize => [ PYGPI Finalize ]");
     DEFER(PYGPI_LOG_TRACE("[ PYGPI Finalize ] => GPI Finalize"));
@@ -221,6 +230,7 @@ static void finalize(void *) {
     }
 }
 
+// 启动cocotb
 static int start_of_sim_time(void *, int argc, char const *const *_argv) {
     PYGPI_LOG_TRACE("GPI Start Sim => [ PYGPI Start ]");
     DEFER(PYGPI_LOG_TRACE("[ PYGPI Start ] => GPI Start Sim"));
@@ -235,12 +245,14 @@ static int start_of_sim_time(void *, int argc, char const *const *_argv) {
     embed_init_called = 1;
 
     // Ensure that the current thread is ready to call the Python C API
+    // 获取python GIL锁
     auto gstate = PyGILState_Ensure();
     DEFER(PyGILState_Release(gstate));
 
     c_to_python();
     DEFER(python_to_c());
 
+    //导入python模块：pygpi.entry
     auto entry_utility_module = PyImport_ImportModule("pygpi.entry");
     if (!entry_utility_module) {
         // LCOV_EXCL_START
@@ -251,6 +263,8 @@ static int start_of_sim_time(void *, int argc, char const *const *_argv) {
     DEFER(Py_DECREF(entry_utility_module));
 
     // Build argv for cocotb module
+ 
+    // 构建argv 把仿真器参数转成python list
     auto argv_list = PyList_New(argc);
     if (argv_list == NULL) {
         // LCOV_EXCL_START
@@ -271,7 +285,8 @@ static int start_of_sim_time(void *, int argc, char const *const *_argv) {
         PyList_SetItem(argv_list, i, argv_item);
     }
     DEFER(Py_DECREF(argv_list))
-
+    // 构造命令行参数并调用cocotb入口 ！！
+    // pygpi.entry.load_entry(sys_argv)
     auto cocotb_retval =
         PyObject_CallMethod(entry_utility_module, "load_entry", "O", argv_list);
     if (!cocotb_retval) {
@@ -288,6 +303,7 @@ static int start_of_sim_time(void *, int argc, char const *const *_argv) {
     return 0;
 }
 
+// 仿真结束通知python
 static void end_of_sim_time(void *) {
     PYGPI_LOG_TRACE("GPI End Sim => [ PYGPI End ]");
     DEFER(PYGPI_LOG_TRACE("[ PYGPI End ] => GPI End Sim"));
