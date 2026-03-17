@@ -187,15 +187,15 @@ for name, val in constants.items():
 # === 3. 定义函数接口 17 个 ===
 def get_precision() -> int: 
     """返回仿真器的时间精度（以 10 的幂表示，如 -12 代表 ps）。"""
-    return -12
+    return -9
 
 def get_root_handle(name: str | None) -> gpi_sim_hdl | None: 
-    """获取仿真的顶层句柄。"""
+    print(f"--- [DEBUG] Cocotb requested root handle for: {name} ---")
     return gpi_sim_hdl(name if name else "top")
 
 def get_sim_time() -> tuple[int, int]: 
     """返回当前仿真时间，以 (高32位, 低32位) 的整数元组返回。"""
-    return (0, 0)
+    return 0, 0
 
 def get_simulator_product() -> str: 
     """返回仿真器产品名称。"""
@@ -230,11 +230,14 @@ def register_rwsynch_callback(func: Callable[..., Any], *args: Any) -> gpi_cb_hd
     return gpi_cb_hdl()
 
 def register_timed_callback(time_steps, callback, *args):
-    """注册一个经过指定时间步后触发的回调。这是 Timer 触发器的核心。"""
     handle = gpi_cb_hdl()
+    # 模拟仿真时间推进：启动一个线程在 10ms 后叫醒 Cocotb
+    # 注意：这里的 callback 必须被调用，否则测试会永久挂起
     def wakeup():
         callback(*args)
-    threading.Timer(0.001, wakeup).start()
+    
+    import threading
+    threading.Timer(0.01, wakeup).start()
     return handle
 
 def register_value_change_callback(
@@ -289,19 +292,22 @@ sim.set_sim_event_callback = set_sim_event_callback
 
 
 # === 4. 模块注入 ===
+
+import sys
+import cocotb
+
+# 1. 基础注入
 sys.modules["cocotb.simulator"] = sim
+cocotb.simulator = sim
 
-try:
-    import cocotb  # 他会先检查sys.moduels的缓存 看是否有子模块
-    cocotb.simulator = sim
-except ImportError: # 没装cocotb
-    print("[错误] 未检测到 cocotb 环境！")
-    print("CoMoPy 仿真框架依赖官方 cocotb 库。")
-    print("请先执行以下命令安装：")
-    print("    pip install cocotb")
-    print("="*50 + "\n")
-        
-    # 直接终止运行，不再继续向下执行
-    sys.exit(1)
+# 2. 扫描并强制修复所有已加载的 cocotb 子模块
+for name, mod in sys.modules.items():
+    if name.startswith("cocotb") and mod is not None:
+        try:
+            # 如果模块内部有 simulator 属性，强制覆盖
+            if hasattr(mod, "simulator"):
+                setattr(mod, "simulator", sim)
+        except Exception:
+            pass
 
-print("--- [CoMoPy] Simulator Framework Ready ---") 
+print("--- [CoMoPy] Cocotb internal submodules patched ---")

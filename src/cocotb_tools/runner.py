@@ -9,6 +9,8 @@
 # TODO: support timescale on all simulators
 # TODO: support custom dependencies
 from __future__ import annotations
+import comopy_simulator
+import sys
 
 import logging
 import multiprocessing
@@ -2081,6 +2083,129 @@ class Dsim(Runner):
         return cmds
 
 
+
+from comopy.hdl import HDLStage
+from comopy.hdl import RawModule
+from comopy.ir import IRStage
+from comopy.simulator import SimulatorStage
+from comopy.utils import JobPipeline
+import comopy.hdl as HDL
+import importlib.util
+class Comopy(Runner):
+    """
+    针对 Comopy 仿真引擎的 cocotb Runner 实现
+    """
+    supported_gpi_interfaces = {"verilog": ["vpi"]}
+
+    def build(self, 
+              hdl_library: str = "top", 
+              hdl_toplevel: str = "top",  # 这里传类名，如 "Adder"
+              sources: list[str] = None, # 这里传文件名，如 ["my_design.py"]
+              **kwargs) -> None:
+        
+        if not sources:
+            raise ValueError("ComoPy Runner requires a source file (.py) to build.")
+
+        # 1. 动态加载第一个源文件
+        source_file = os.path.abspath(sources[0])
+        module_name = os.path.splitext(os.path.basename(source_file))[0]
+
+        # 将文件所在目录加入搜索路径，防止相对导入报错
+        source_dir = os.path.dirname(source_file)
+        if source_dir not in sys.path:
+            sys.path.insert(0, source_dir)
+
+        # 2. 加载模块并实例化类
+        spec = importlib.util.spec_from_file_location(module_name, source_file)
+        user_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(user_module)
+
+        # 3. 获取并实例化用户定义的硬件类
+        try:
+            hdl_class = getattr(user_module, hdl_toplevel)
+            # 实例化得到 RawModule 对象
+            top_instance = hdl_class() 
+        except AttributeError:
+            raise AttributeError(f"Module '{module_name}' has no class named '{hdl_toplevel}'")
+
+        self.log.info(f"--- [ComoPy] Building {hdl_toplevel} from {source_file} ---")
+
+        # 4. 运行 JobPipeline
+        # Pipeline 会自动处理对象转换：RawModule -> CircuitNode -> Simulator Ready
+        pipeline = JobPipeline(HDLStage(), IRStage(), SimulatorStage())
+        
+        # 捕获最终产物（CircuitNode）
+        pipeline(top_instance) # 像基类一样直接调用
+        self.top = top_instance # 保持引用
+        
+    def _test_command(self) -> list[list[str]]:
+        """
+        cocotb 会调用此函数获取 shell 命令。
+        但我们要劫持这个流程，在 Python 内部启动。
+        """
+        # 返回一个伪命令，防止父类报错
+        return [["python", "-c", "print('ComoPy Internal Loop')"]]
+    def test(self, toplevel: str, py_module: str, **kwargs) -> None:
+        # ... 前面的路径和 import 保持不变 ...
+        import comopy_simulator 
+
+        # --- 新增：强制手动注入 ---
+        if not hasattr(self.top, "simulator"):
+            self.log.info("--- [ComoPy] Simulator not found on node, attempting manual injection ---")
+            sim_stage = SimulatorStage()
+            # 手动执行 Stage，它会直接修改 self.top 对象
+            sim_stage(self.top) 
+        # -----------------------
+
+        if not hasattr(self.top, "simulator"):
+             raise RuntimeError("SimulatorStage failed to inject .simulator. Is SimpleDut defined correctly?")
+
+        sim = self.top.simulator        
+        # 4. 配置 Cocotb 环境变量
+        os.environ["MODULE"] = py_module
+        os.environ["COCOTB_TEST_MODULES"] = py_module
+        os.environ["TOPLEVEL"] = toplevel
+        # 如果是 Verilog 风格的接口，有时需要这个
+        os.environ["COCOTB_SIM"] = "1" 
+        self.log.info(f"DEBUG: Current sys.path covers: {os.getcwd()}")
+        # 5. 启动仿真引擎
+        sim.start() 
+
+        # 6. 启动 Cocotb 控制权
+        from cocotb._init import init_package_from_simulation, run_regression
+        
+  
+        try:
+            self.log.info(f"--- [ComoPy] Linking Cocotb to {py_module} ---")
+            
+            # 告诉 cocotb 基础包信息
+            init_package_from_simulation([])
+            
+            # 手动指定要跑的测试模块，而不是依赖环境变量
+            # 如果 run_regression 不支持参数，就确保上面的 os.environ["COCOTB_TEST_MODULES"] 已设置
+            run_regression([])
+        except Exception as e:
+            self.log.error(f"Cocotb execution failed: {e}")
+            raise
+        finally:
+            # 无论成功失败，都要关闭仿真器，释放内存或关闭日志文件
+            sim.stop()
+            self.log.info("--- [ComoPy] Simulation Finished ---")
+
+    """不需要实现"""
+    def _simulator_in_path(self) -> None:
+        """不需要检查二进制文件"""
+        pass
+    def _get_include_options(self, includes: Sequence[PathLike]) -> _Command:
+        pass
+    def _get_define_options(self, defines: Mapping[str, object]) -> _Command:
+        pass
+    def _get_parameter_options(self, parameters: Mapping[str, object]) -> _Command:
+        pass
+    def _build_command(self) -> list[_Command]:
+        pass
+
+
 def get_runner(simulator_name: str) -> Runner:
     """Return an instance of a runner for *simulator_name*.
 
@@ -2103,7 +2228,7 @@ def get_runner(simulator_name: str) -> Runner:
         "nvc": Nvc,
         "vcs": Vcs,
         "dsim": Dsim,
-        
+        "comopy": Comopy,
         # TODO: "activehdl": ActiveHdl,
     }
     try:
