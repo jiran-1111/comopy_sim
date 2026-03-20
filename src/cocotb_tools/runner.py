@@ -2102,8 +2102,8 @@ class Comopy(Runner):
         self.log = logging.getLogger("cocotb.runner.comopy")
 
     def build(self, 
-              hdl_toplevel: str = "top",  # 这里传类名，如 "Adder"
-              sources: list[str] = None, # 这里传文件名，如 ["my_design.py"]
+              hdl_toplevel: str = "top",  # 类名，如 "Adder"
+              sources: list[str] = None, # 文件名，如 ["my_design.py"]
               **kwargs) -> None:
         
         if not sources:
@@ -2144,29 +2144,31 @@ class Comopy(Runner):
             self.log.info(f"Simulator initialized: {self.top.simulator}")
     
     def test(self, hdl_toplevel: str, test_module: str, **kwargs) -> None:
-     
-        import comopy_simulator 
+        # 在cocotb之前引入覆盖率
+        os.environ["COCOTB_LIBRARY_COVERAGE"] = "1"
+        from cocotb_tools._coverage import start_cocotb_library_coverage
+        start_cocotb_library_coverage(None)
+
         from comopy_simulator.cocotb.simulator import patch_cocotb_simulator
 
         sim = self.top.simulator 
        
+        # 引入simulator
         self.log.info(f"--- [ComoPy] Patching cocotb.simulator with CoMoPy engine ---")
         patch_cocotb_simulator(sim)
 
         # 配置 Cocotb 环境变量
-        os.environ["MODULE"] = test_module
-        os.environ["COCOTB_TEST_MODULES"] = test_module # 关键：Cocotb 找的是这个
-        os.environ["TOPLEVEL"] = hdl_toplevel
+        os.environ["COCOTB_TEST_MODULES"] = test_module 
+        os.environ["COCOTB_TOPLEVEL"] = hdl_toplevel
 
-
+        # 启动仿真器
         sim.start() 
         # 启动 Cocotb
         from cocotb._init import init_package_from_simulation, run_regression
         
-  
         try:
             self.log.info(f"--- [ComoPy] Linking Cocotb to {test_module} ---")
- 
+            
             init_package_from_simulation([])
             run_regression([])
         except Exception as e:
@@ -2174,10 +2176,9 @@ class Comopy(Runner):
            
             raise
         finally:
-            # 无论成功失败，都要关闭仿真器，释放内存或关闭日志文件
             sim.stop()
             self.log.info("--- [ComoPy] Simulation Finished ---")
-            #print("--- [ComoPy] Simulation Finished ---")
+
 
     def _test_command(self) -> list[list[str]]:
         """

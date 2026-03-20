@@ -12,7 +12,7 @@ else:
     GPIDiscovery = Any
     Logger = Any
 
-# === 1. 类定义 (对应 GPI 接口) ===
+# === 类定义 (对应 GPI 接口) ===
 
 class cpp_clock:
     def __init__(self, signal: 'gpi_sim_hdl') -> None:
@@ -86,7 +86,6 @@ class gpi_cb_hdl:
     def __ne__(self, other: object) -> bool: return not self.__eq__(other)
     def __hash__(self) -> int: return id(self)
 
-
 class gpi_iterator_hdl: 
     """对应 C++ 中的 GpiIteratorHdl 类。用于遍历层级。"""
     def __eq__(self, other: object) -> bool: return self is other
@@ -96,10 +95,12 @@ class gpi_iterator_hdl:
     def __next__(self) -> gpi_sim_hdl: 
         raise StopIteration
 
-# === 全局定义的 GPI 接口函数 ===
+# === 全局定义的 GPI 接口函数 17个 ===
 
 def get_precision() -> int: return -9
-def get_sim_time() -> tuple[int, int]: return 0, 0
+def get_sim_time() -> tuple[int, int]: 
+    return 0,0
+
 def get_simulator_product() -> str: return "CoMoPy"
 def get_simulator_version() -> str: return "1.0"
 def is_running() -> bool: return True
@@ -133,29 +134,31 @@ def initialize_logger(
     from cocotb.logging import _configure
     _configure(None)
   
-   
+    
     cocotb_log = logging.getLogger("cocotb")
     cocotb_log.setLevel(logging.DEBUG)
 
     log_file = "cocotb_simulation.log"
     file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
-
+    
     if cocotb_log.handlers:
         file_handler.setFormatter(cocotb_log.handlers[0].formatter)
     else:
-        
         file_handler.setFormatter(logging.Formatter('%(levelname)-8s %(name)-20s %(message)s'))
-
+    
     cocotb_log.addHandler(file_handler)
-
+    
     print(f"--- [CoMoPy] Logging redirected to: {os.path.abspath(log_file)} ---")
 
 def set_sim_event_callback(sim_event_callback): pass
 
 def get_root_handle(name: str | None) -> gpi_sim_hdl | None: 
-    # 这里只是一个占位，实际逻辑会被 patch 函数内部的定义覆盖
-    return gpi_sim_hdl(name if name else "top")
+    return gpi_sim_hdl(name if name else "top",
+                        obj = name,
+                        sim_engine=name)
+
 # === 注入核心函数 ===
+
 
 def patch_cocotb_simulator(comopy_sim_instance):
     """
@@ -174,7 +177,7 @@ def patch_cocotb_simulator(comopy_sim_instance):
     for name, val in constants.items():
         setattr(sim, name, val)
 
-    # 2. 绑定外部定义的函数到该模块
+    # 绑定外部定义的函数到该模块
     sim.get_precision = get_precision
     sim.get_sim_time = get_sim_time
     sim.get_simulator_product = get_simulator_product
@@ -191,18 +194,7 @@ def patch_cocotb_simulator(comopy_sim_instance):
     sim.clock_create = clock_create
     sim.initialize_logger = initialize_logger
     sim.set_sim_event_callback = set_sim_event_callback
-    # 定义一个内部函数，捕获 comopy_sim_instance
-    def _get_root_handle_wrapper(name: str | None) -> gpi_sim_hdl | None:
-        print(f"--- [DEBUG] Cocotb requested root handle for: {name} ---")
-        # 返回一个带有实际 ComoPy 模块对象的句柄
-        return gpi_sim_hdl(
-            name=name if name else "top", 
-            obj=comopy_sim_instance.module, 
-            sim_engine=comopy_sim_instance
-        )
-
-    # 绑定这个包装后的函数
-    sim.get_root_handle = _get_root_handle_wrapper
+    sim.get_root_handle = get_root_handle
     
 
     # 绑定类定义
@@ -217,7 +209,7 @@ def patch_cocotb_simulator(comopy_sim_instance):
     import cocotb
     cocotb.simulator = sim
 
-    # 对已经导入 cocotb 子模块进行补丁
+    # 如果已经导入 把simulator 模块的引用替换成新的 sim 对象
     for name, mod in list(sys.modules.items()):
         if name.startswith("cocotb") and mod is not None:
             try:
