@@ -12,16 +12,16 @@ async def test_only_timer(dut):
     print(f"DEBUG: DIR of dut.a is {dir(dut.a)}")
     print(f"DEBUG: dut.a._handle type: {type(dut.a._handle)}")
     print(f"DEBUG: dut.a._set_value function: {dut.a._set_value}")
-    A = 1
+    A = 5
 
     dut.a.value = A
 
     await Timer(2, unit="ns")
     print(f"DEBUG: After drive, dut.a is {dut.a.value}, dut.q is {dut.q.value}")
     assert dut.q.value == A, (
-        f"result is incorrect: {dut.q.value} != 1"
+        f"result is incorrect: {dut.q.value} != 5"
     )
     print(f"HARDWARE RAW Q: {dut.q._handle.get_signal_val_long()}")
-    assert dut.q._handle.get_signal_val_long() == 1
+    assert dut.q._handle.get_signal_val_long() == A
 
 

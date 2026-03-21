@@ -12,6 +12,9 @@ else:
     GPIDiscovery = Any
     Logger = Any
 
+_active_comopy_sim = None
+_comopy_engine = None 
+_current_time_ps = 0
 # === 类定义 (对应 GPI 接口) ===
 
 class cpp_clock:
@@ -89,23 +92,18 @@ class gpi_sim_hdl:
     def iterate(self, mode: int) -> 'gpi_iterator_hdl': return gpi_iterator_hdl()
 
     def set_signal_val_int(self, action: int, value: int) -> None: 
-        
-        """
-        这个函数是 Cocotb 最终会通过 C 接口调用的驱动入口
-        """
         try:
-            # 1. 硬件赋值 (PyMTL3 /= 语法)
+            # 写硬件
             self.obj /= value 
             
-            # 2. 立即触发逻辑评估 (核心！否则 q 还是旧值)
-            # 这里的 self.sim 是你在 get_root_handle 里传入的 comopy_sim_instance
-            if self.sim and hasattr(self.sim, 'evaluate'):
-                self.sim.evaluate()
-            
-            # 强行打印一条信息到终端，证明驱动执行了
-            print(f"DEBUG: [CoMoPy Drive] {self.name} = {value}")
+            # --- 真正的连接点 A：组合逻辑评估 ---
+            if _comopy_engine:
+                # 每次输入改变，立即评估受影响的组合逻辑块
+                _comopy_engine.evaluate()
+                
+            sys.__stdout__.write(f"DEBUG: [CoMoPy Drive] {self.name} = {value}\n")
         except Exception as e:
-            print(f"DEBUG: [Drive Failed] {e}")
+            sys.__stdout__.write(f"DEBUG: [Drive Failed] {e}\n")
     def set_signal_val_binstr(self, action: int, value: str) -> None:
         self.set_signal_val_int(0, int(value, 2))
 
@@ -132,13 +130,9 @@ current_time_ps = 0
 
 def get_precision() -> int: return -12
 def get_sim_time() -> tuple[int, int]: 
-    global current_time_ps
-    t = int(current_time_ps)
-    # 按照 Cocotb C++ 层的预期返回 (high, low)
-    # 使用 0xFFFFFFFF 掩码确保它们是标准的 32 位无符号整数
-    low = t & 0xFFFFFFFF
-    high = (t >> 32) & 0xFFFFFFFF
-    return (high, low)  # 换个顺序试试，如果不行就换回 (low, high)
+    global _current_time_ps
+    t = int(_current_time_ps)
+    return (t >> 32 & 0xFFFFFFFF, t & 0xFFFFFFFF)
 
 def get_simulator_product() -> str: return "CoMoPy"
 def get_simulator_version() -> str: return "1.0"
@@ -150,16 +144,26 @@ def register_readonly_callback(func, *args): return gpi_cb_hdl()
 def register_rwsynch_callback(func, *args): return gpi_cb_hdl()
 
 def register_timed_callback(time_steps, callback, *args):
-    global current_time_ps
-    # time_steps 通常是由 cocotb 根据精度换算过来的整数
-    # 如果 Timer(2, "ns") 且 precision=-12, 则 time_steps=2000
+    global _current_time_ps, _comopy_engine
     
-    current_time_ps += time_steps
+    import comopy.hdl as HDL # 导入用于判断
     
-    # 获取根句柄对应的仿真引擎并评估
-    # 我们需要确保在 cocotb 检查结果前，硬件逻辑已经跑过一次 evaluate
-    # 注意：这里的 sim_engine 需要从你的全局存储中获取
-    
+    if _comopy_engine:
+        # 检查是否有对应的 Module 实例且具有 clk 属性
+        dut_obj = getattr(_comopy_engine, "_module", None)
+        
+        # 判断：只有当它是真正的 HDL.Module (带有时钟) 时才调用 tick
+        if isinstance(dut_obj, HDL.Module) and hasattr(dut_obj, 'clk'):
+            num_ticks = time_steps // 1000 
+            for _ in range(max(1, num_ticks)):
+                _comopy_engine.tick()
+        else:
+            # 如果是 RawModule (无时钟)，我们只同步逻辑评估，不触发时钟边沿
+            # 这样就不会触发 CoMoPy 内部的 RuntimeError 了
+            _comopy_engine.evaluate()
+            sys.__stdout__.write("DEBUG: [CoMoPy] RawModule detected, skipping tick(), running evaluate() only\n")
+
+    _current_time_ps += time_steps
     callback(*args)
     return gpi_cb_hdl()
 
@@ -220,7 +224,9 @@ def patch_cocotb_simulator(comopy_sim_instance):
     }
     for name, val in constants.items():
         setattr(sim, name, val)
-
+    global _comopy_engine
+    _comopy_engine = comopy_sim_instance  # 这里的实例就是你的 ScheduledSimulator
+    
     # 3. 绑定我们实现的 GPI 函数
     sim.get_precision = get_precision
     sim.get_sim_time = get_sim_time
