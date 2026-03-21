@@ -25,9 +25,11 @@ class cpp_clock:
 class gpi_sim_hdl:
     def __init__(self, name: str, obj: Any = None, sim_engine: Any = None):
         self.name = name
-        self.obj = obj          # 存储 CoMoPy 的硬件对象
-        self.sim = sim_engine   # 存储 EventSimulator 实例
+        self.obj = obj 
+        self.sim = sim_engine 
         self.hdl = self
+        # 显式绑定，确保 cocotb 底层调用的是这个驱动函数
+        self._set_value = self.set_signal_val_int
 
     def get_const(self) -> bool: return False
     def get_definition_file(self) -> str: return "virtual.v"
@@ -35,28 +37,51 @@ class gpi_sim_hdl:
     def get_handle_by_index(self, index: int) -> 'gpi_sim_hdl | None': return None
     
     def get_handle_by_name(self, name: str, discovery_method: int = 0) -> 'gpi_sim_hdl' | None:
+        # 在 RawModule assemble 之后，端口 a, q 会直接作为属性
+        target = getattr(self.obj, name, None)
+        if target is None and hasattr(self.obj, '_ports'):
+            for p in self.obj._ports:
+                if getattr(p, 'name', '') == name:
+                    target = p
+                    break
+        if target is not None:
+            return gpi_sim_hdl(name=name, obj=target, sim_engine=self.sim)
         return None
 
     def get_indexable(self) -> bool: return False
     def get_name_string(self) -> str: return self.name
-    def get_num_elems(self) -> int: return getattr(self.obj, 'nbits', 0)
-    def get_range(self) -> tuple[int, int, int]: return (0, 0, 0)
+    def get_num_elems(self) -> int: 
+        return getattr(self.obj, 'nbits', 1)
+
+    def get_range(self) -> tuple[int, int, int]: 
+        # 修正：cocotb 期望返回 (left, right, direction)
+        # 对于 3-bit 信号 [2:0]，应该是 (2, 0, -1) 代表 downto
+        nbits = self.get_num_elems()
+        return (nbits - 1, 0, -1)
     
-    def get_signal_val_binstr(self) -> str: return "0"
+    def get_signal_val_binstr(self) -> str:
+        val = self.get_signal_val_long()
+        nbits = self.get_num_elems()
+        return bin(val)[2:].zfill(nbits)
+
     def get_signal_val_long(self) -> int:
-        if hasattr(self.obj, 'data_bits'):
-            return self.obj.data_bits.unsigned
-        return 0
+        try:
+            # CoMoPy/PyMTL3 信号对象读取真实值的标准方法
+            if hasattr(self.obj, 'uint'):
+                return int(self.obj.uint())
+            return int(self.obj)
+        except:
+            return 0
+
     def get_signal_val_real(self) -> float: return 0.0
     def get_signal_val_str(self) -> bytes: return b""
 
     def get_type(self) -> int:
-        # 动态检测对象类型
-        try:
-            from comopy.hdl import RawModule
-            if isinstance(self.obj, RawModule): return 2 # MODULE
-        except: pass
-        return 15 # LOGIC
+        # 判定是否为模块（Hierarchy）
+        if hasattr(self.obj, '_ports') or (hasattr(self.obj, 'is_module') and self.obj.is_module):
+            return 2 # MODULE
+        # 判定是否为向量或标量
+        return 16 if self.get_num_elems() > 1 else 15
 
     def get_type_string(self) -> str: 
         return "MODULE" if self.get_type() == 2 else "LOGIC"
@@ -64,18 +89,25 @@ class gpi_sim_hdl:
     def iterate(self, mode: int) -> 'gpi_iterator_hdl': return gpi_iterator_hdl()
 
     def set_signal_val_int(self, action: int, value: int) -> None: 
-        # 核心：驱动信号并触发电路评估
-        if hasattr(self.obj, '__itruediv__'):
-            self.obj /= value
-            if self.sim: self.sim.evaluate()
-
-    def set_signal_val_binstr(self, action: int, value: str) -> None: pass
-    def set_signal_val_real(self, action: int, value: float) -> None: pass
-    def set_signal_val_str(self, action: int, value: bytes) -> None: pass
-    def __eq__(self, other: object) -> bool: return isinstance(other, gpi_sim_hdl) and self.name == other.name
-    def __hash__(self) -> int: return hash(self.name)
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+        
+        """
+        这个函数是 Cocotb 最终会通过 C 接口调用的驱动入口
+        """
+        try:
+            # 1. 硬件赋值 (PyMTL3 /= 语法)
+            self.obj /= value 
+            
+            # 2. 立即触发逻辑评估 (核心！否则 q 还是旧值)
+            # 这里的 self.sim 是你在 get_root_handle 里传入的 comopy_sim_instance
+            if self.sim and hasattr(self.sim, 'evaluate'):
+                self.sim.evaluate()
+            
+            # 强行打印一条信息到终端，证明驱动执行了
+            print(f"DEBUG: [CoMoPy Drive] {self.name} = {value}")
+        except Exception as e:
+            print(f"DEBUG: [Drive Failed] {e}")
+    def set_signal_val_binstr(self, action: int, value: str) -> None:
+        self.set_signal_val_int(0, int(value, 2))
 
 class gpi_cb_hdl: 
     """对应 C++ 中的 GpiCbHdl 类。代表一个已注册的回调（如 Timer, Edge）。"""
@@ -96,10 +128,17 @@ class gpi_iterator_hdl:
         raise StopIteration
 
 # === 全局定义的 GPI 接口函数 17个 ===
+current_time_ps = 0
 
-def get_precision() -> int: return -9
+def get_precision() -> int: return -12
 def get_sim_time() -> tuple[int, int]: 
-    return 0,0
+    global current_time_ps
+    t = int(current_time_ps)
+    # 按照 Cocotb C++ 层的预期返回 (high, low)
+    # 使用 0xFFFFFFFF 掩码确保它们是标准的 32 位无符号整数
+    low = t & 0xFFFFFFFF
+    high = (t >> 32) & 0xFFFFFFFF
+    return (high, low)  # 换个顺序试试，如果不行就换回 (low, high)
 
 def get_simulator_product() -> str: return "CoMoPy"
 def get_simulator_version() -> str: return "1.0"
@@ -111,15 +150,17 @@ def register_readonly_callback(func, *args): return gpi_cb_hdl()
 def register_rwsynch_callback(func, *args): return gpi_cb_hdl()
 
 def register_timed_callback(time_steps, callback, *args):
-    """
-    当 Cocotb 执行 await Timer 时，会调用这个函数。
-    我们必须在一段时间后执行 callback(*args)，Cocotb 才会继续往下走。
-    """
-    # 模拟真实世界的时间延迟（比如 10ms 后叫醒 Cocotb）
-    import threading
-    t = threading.Timer(0.01, lambda: callback(*args))
-    t.start()
+    global current_time_ps
+    # time_steps 通常是由 cocotb 根据精度换算过来的整数
+    # 如果 Timer(2, "ns") 且 precision=-12, 则 time_steps=2000
     
+    current_time_ps += time_steps
+    
+    # 获取根句柄对应的仿真引擎并评估
+    # 我们需要确保在 cocotb 检查结果前，硬件逻辑已经跑过一次 evaluate
+    # 注意：这里的 sim_engine 需要从你的全局存储中获取
+    
+    callback(*args)
     return gpi_cb_hdl()
 
 def register_value_change_callback(signal, func, edge, *args): return gpi_cb_hdl()
@@ -159,14 +200,17 @@ def get_root_handle(name: str | None) -> gpi_sim_hdl | None:
 
 # === 注入核心函数 ===
 
-
 def patch_cocotb_simulator(comopy_sim_instance):
-    """
-    通过 sys.modules 注入伪造的 simulator 模块。
-    """
-    sim = ModuleType("cocotb.simulator")
+    import cocotb
+    import cocotb.simulator
+    import cocotb.simtime
+    import sys
+    from types import ModuleType
 
-    # 注入常量
+    # 1. 创建伪造模块
+    sim = ModuleType("cocotb.simulator")
+    
+    # 2. 注入所有必需的常量 (补全 cocotb 预期的所有 key)
     constants = {
         "DRIVERS": 2, "ENUM": 7, "GENARRAY": 12, "INTEGER": 10, "LOADS": 3,
         "LOGIC": 15, "LOGIC_ARRAY": 16, "MEMORY": 1, "MODULE": 2, "NETARRAY": 10,
@@ -177,7 +221,7 @@ def patch_cocotb_simulator(comopy_sim_instance):
     for name, val in constants.items():
         setattr(sim, name, val)
 
-    # 绑定外部定义的函数到该模块
+    # 3. 绑定我们实现的 GPI 函数
     sim.get_precision = get_precision
     sim.get_sim_time = get_sim_time
     sim.get_simulator_product = get_simulator_product
@@ -194,28 +238,65 @@ def patch_cocotb_simulator(comopy_sim_instance):
     sim.clock_create = clock_create
     sim.initialize_logger = initialize_logger
     sim.set_sim_event_callback = set_sim_event_callback
-    sim.get_root_handle = get_root_handle
     
-
+    # 这里的 root handle 是关键
+    def get_real_root_handle(name: str | None) -> gpi_sim_hdl | None:
+        return gpi_sim_hdl(name=name if name else "top", 
+                           obj=comopy_sim_instance.module, 
+                           sim_engine=comopy_sim_instance)
+    sim.get_root_handle = get_real_root_handle
+    
     # 绑定类定义
     sim.gpi_sim_hdl = gpi_sim_hdl
     sim.gpi_cb_hdl = gpi_cb_hdl
     sim.gpi_iterator_hdl = gpi_iterator_hdl
     sim.cpp_clock = cpp_clock
-
-    # 执行系统替换
+# 4. 【核心黑科技：全路径覆盖】
     sys.modules["cocotb.simulator"] = sim
-    
-    import cocotb
     cocotb.simulator = sim
 
-    # 如果已经导入 把simulator 模块的引用替换成新的 sim 对象
-    for name, mod in list(sys.modules.items()):
-        if name.startswith("cocotb") and mod is not None:
-            try:
-                if hasattr(mod, "simulator"):
-                    setattr(mod, "simulator", sim)
-            except: pass
+    # 暴力遍历所有已加载的 cocotb 子模块
+    # 因为很多模块（如 _gpi_triggers, regression 等）会在顶部执行 'from cocotb import simulator'
+    # 我们必须把它们手里的那个引用也换掉
+    import cocotb
+    for mod_name, module in sys.modules.items():
+        if mod_name.startswith("cocotb.") and module is not None:
+            if hasattr(module, "simulator"):
+                setattr(module, "simulator", sim)
+                # print(f"DEBUG: Patched {mod_name}.simulator") # 调试用
 
-    print("--- [CoMoPy] Cocotb Simulator successfully patched ---")
+    # 针对报错最多的几个模块进行显式强刷
+    import cocotb._gpi_triggers
+    import cocotb.regression
+    import cocotb.simtime
+    import cocotb.handle
+    cocotb._gpi_triggers.simulator = sim
+    cocotb.regression.simulator = sim
+    cocotb.simtime.simulator = sim
+    cocotb.handle.simulator = sim
+
+    # 5. --- 属性拦截保持不变 ---
+    import cocotb.handle
+    
+    def forced_value_setter(self, value):
+        val_int = int(value)
+        # 直接写硬件
+        self._handle.obj /= val_int
+        # 立即评估逻辑
+        if self._handle.sim and hasattr(self._handle.sim, 'evaluate'):
+            self._handle.sim.evaluate()
+        # 调试输出
+        sys.__stdout__.write(f"\n[CRITICAL HOOK] {self._path} SET TO {val_int}\n")
+        sys.__stdout__.flush()
+
+    # 强行覆盖 LogicObject 和 LogicArrayObject 的 value 属性
+    # 使用 setattr 动态替换 property，这是最稳妥的办法
+    new_prop = property(fget=lambda self: self._handle.get_signal_val_long(), 
+                        fset=forced_value_setter)
+    
+    cocotb.handle.LogicObject.value = new_prop
+    if hasattr(cocotb.handle, "LogicArrayObject"):
+        cocotb.handle.LogicArrayObject.value = new_prop
+
+    print("--- [CoMoPy] SYSTEM OVERRIDE SUCCESSFUL ---")
     return sim

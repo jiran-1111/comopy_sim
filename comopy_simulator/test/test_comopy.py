@@ -8,12 +8,20 @@ async def test_only_timer(dut):
         print(f"--- [Test] Checking signal: {dut.a} ---")
     except Exception as e:
         print(f"--- [Test] FAILED to access signal: {e} ---")
-    
-    # 2. 等待 Timer
-    await Timer(5, "ns")
-    # 核心测试：如果这个 await 能回来，说明注入成功了
-    await Timer(5, unit="ns")
-    current_time = cocotb.simulator.get_sim_time()
-    print(f"--- [Test] Current time: {current_time} ns ---")
-    print("--- [Test] Successfully resumed after Timer! ---")
+    print(f"DEBUG: TYPE of dut.a is {type(dut.a)}")
+    print(f"DEBUG: DIR of dut.a is {dir(dut.a)}")
+    print(f"DEBUG: dut.a._handle type: {type(dut.a._handle)}")
+    print(f"DEBUG: dut.a._set_value function: {dut.a._set_value}")
+    A = 1
+
+    dut.a.value = A
+
+    await Timer(2, unit="ns")
+    print(f"DEBUG: After drive, dut.a is {dut.a.value}, dut.q is {dut.q.value}")
+    assert dut.q.value == A, (
+        f"result is incorrect: {dut.q.value} != 1"
+    )
+    print(f"HARDWARE RAW Q: {dut.q._handle.get_signal_val_long()}")
+    assert dut.q._handle.get_signal_val_long() == 1
+
 
