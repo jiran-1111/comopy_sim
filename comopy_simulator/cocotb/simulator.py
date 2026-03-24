@@ -37,6 +37,7 @@ class gpi_sim_hdl:
         self.sim = sim_engine 
         self.hdl = self
         self._set_value = self.set_signal_val_int
+        self._last_value = self.get_signal_val_long()
 
     def get_handle_by_name(self, name: str, discovery_method: int = 0) -> 'gpi_sim_hdl' | None:
         """找到信号对象 返回gpi_sim_hdl对象"""
@@ -250,6 +251,50 @@ def get_sim_time() -> tuple[int, int]:
 # 建议放在全局作用域，确保 patch 之前已经定义好
 _is_processing = False
 
+def _check_value_change_callbacks():
+    global _value_change_callbacks
+    if not _value_change_callbacks:
+        return
+
+    triggered = []
+    remaining = []
+
+    for item in _value_change_callbacks:
+        signal, edge_type, cb, args, cb_hdl = item
+        
+        if not cb_hdl.activate: # 如果已经被取消了
+            continue
+
+        new_val = signal.get_signal_val_long()
+        old_val = signal._last_value
+        
+        is_rising = (old_val == 0 and new_val == 1)
+        is_falling = (old_val == 1 and new_val == 0)
+        
+        # 判定是否满足边沿条件
+        should_trigger = False
+        if edge_type == 0: # RISING
+            should_trigger = is_rising
+        elif edge_type == 1: # FALLING
+            should_trigger = is_falling
+        elif edge_type == 2: # BOTH
+            should_trigger = is_rising or is_falling
+
+        if should_trigger:
+            triggered.append((cb, args))
+            # cocotb 的边沿触发通常是“一次性”的（One-shot），触发后即移除
+        else:
+            remaining.append(item)
+        
+        # 更新旧值
+        signal._last_value = new_val
+
+    _value_change_callbacks = remaining
+    
+    # 批量执行触发的回调
+    for cb, args in triggered:
+        cb(*args)
+        
 def register_timed_callback(time_steps, callback, *args):
     global _current_time_ps, _is_processing, _comopy_engine
     
@@ -262,34 +307,28 @@ def register_timed_callback(time_steps, callback, *args):
     if not _is_processing:
         _is_processing = True
         try:
-            # 只要队列里有东西，就一直跑
             while _event_loop:
-                # 总是取时间最早的事件
                 t, cb, a, active = heapq.heappop(_event_loop)
                 
-                # 时间推进与硬件同步
                 time_diff = t - _current_time_ps
                 if _comopy_engine and time_diff > 0:
-                    import comopy.hdl as HDL
+                    # --- 执行硬件演进 ---
                     dut_obj = getattr(_comopy_engine, "_module", None)
-                    if isinstance(dut_obj, HDL.Module) and hasattr(dut_obj, 'clk'):
+                    if hasattr(dut_obj, 'clk'):
                         num_ticks = time_diff // 1000
                         for _ in range(max(1, num_ticks)):
                             _comopy_engine.tick()
+                            # 每 tick 一次，检查一次边沿回调
+                            _check_value_change_callbacks() 
                     else:
                         _comopy_engine.evaluate()
+                        _check_value_change_callbacks()
                 
                 _current_time_ps = t
-                
-                # 执行回调。
-                # 重要：cb(*a) 可能会内部调用 register_timed_callback 往堆里加新东西
                 if active:
                     cb(*a)
-                
-                # 不要在这里 break！让循环继续检查堆里是否有下一个测试的启动事件
         finally:
             _is_processing = False
-
     return gpi_cb_hdl(event_packet)
 
 # ——————————————回调注册——————————————————————
@@ -301,8 +340,23 @@ def register_readonly_callback(func, *args): return gpi_cb_hdl()
 def register_rwsynch_callback(func, *args): return gpi_cb_hdl()
 
 """重要 实现await risingedge fallingedge"""
-def register_value_change_callback(signal, func, edge, *args): 
-    return gpi_cb_hdl()
+
+_value_change_callbacks = []
+
+def register_value_change_callback(signal, func, edge, *args):
+    """
+    edge: 0 为 RISING, 1 为 FALLING, 2 为 BOTH
+    """
+    global _value_change_callbacks
+    
+    cb_hdl = gpi_cb_hdl()
+    # 将监听请求加入列表
+    _value_change_callbacks.append((signal, edge, func, args, cb_hdl))
+    
+    # 打印调试信息
+    # sys.__stdout__.write(f"DEBUG: Registered Edge Callback on {signal.name} (Type: {edge})\n")
+    
+    return cb_hdl
 
 """设置仿真时间的全局回调"""
 def set_sim_event_callback(sim_event_callback): pass

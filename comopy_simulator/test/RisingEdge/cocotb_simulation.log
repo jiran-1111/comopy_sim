@@ -1,0 +1,40 @@
+INFO     cocotb               Running on CoMoPy version 1.0
+INFO     cocotb               Seeding Python random module with 1774345867
+INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
+DEBUG    cocotb.regression    Registered test 'test_risingedge.test_0'
+DEBUG    cocotb.regression    Registered test 'test_risingedge.test_1'
+DEBUG    cocotb.regression    Registered test 'test_risingedge.test_2'
+DEBUG    cocotb.regression    Registered test 'test_risingedge.test_3'
+DEBUG    cocotb.regression    Registered test 'test_risingedge.test_4'
+INFO     cocotb               Running tests
+INFO     cocotb.regression    [34mrunning[49m[39m test_risingedge.test_0 (1/5)
+WARNING  cocotb.task.Test test_0 SimpleDut contains no child object named clk
+Traceback (most recent call last):
+  File "/home/ranrr/cocotb/comopy_simulator/test/RisingEdge/test_risingedge.py", line 19, in test_0
+    await RisingEdge(dut.clk)
+                     ^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/handle.py", line 480, in __getattr__
+    raise AttributeError(f"{self._path} contains no child object named {name}")
+AttributeError: SimpleDut contains no child object named clk
+WARNING  cocotb.regression    [49m[39mtest_risingedge.test_0 [31mfailed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m test_risingedge.test_1 (2/5)
+INFO     cocotb.regression    test_risingedge.test_1 [32mpassed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m test_risingedge.test_2 (3/5)
+INFO     cocotb.regression    test_risingedge.test_2 [32mpassed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m test_risingedge.test_3 (4/5)
+INFO     cocotb.regression    test_risingedge.test_3 [32mpassed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m test_risingedge.test_4 (5/5)
+INFO     cocotb.regression    test_risingedge.test_4 [32mpassed[49m[39m
+INFO     cocotb.regression    **************************************************************************************
+** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+**************************************************************************************
+** test_risingedge.test_0        [31m FAIL [49m[39m          1.00           0.00        279.97  **
+** test_risingedge.test_1        [32m PASS [49m[39m         10.00           0.00      30637.72  **
+** test_risingedge.test_2        [32m PASS [49m[39m          5.00           0.00      19082.37  **
+** test_risingedge.test_3        [32m PASS [49m[39m          2.00           0.00       8012.04  **
+** test_risingedge.test_4        [32m PASS [49m[39m         20.00           0.00      10410.29  **
+**************************************************************************************
+** TESTS=5 PASS=4 FAIL=1 SKIP=0                 38.01           0.02       2326.50  **
+**************************************************************************************
+
+INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

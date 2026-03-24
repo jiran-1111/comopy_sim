@@ -2,7 +2,7 @@ import os
 import sys
 
 # 获取 comopy_simulator 所在的根目录 (test 的上一级)
-root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 获取根目录的上一级 (即包含 comopy_simulator 文件夹的目录)
 parent_dir = os.path.dirname(root_dir)
 
@@ -33,7 +33,7 @@ def main():
     """
     runner.test(
         hdl_toplevel="SimpleDut",      # 对应 GPI 根节点名字
-        test_module="test_comopy"    # 对应 test_comopy.py 文件名
+        test_module="test_risingedge"    # 对应 test_comopy.py 文件名
     )
 
 if __name__ == "__main__":
