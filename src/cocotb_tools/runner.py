@@ -9,7 +9,7 @@
 # TODO: support timescale on all simulators
 # TODO: support custom dependencies
 from __future__ import annotations
-import comopy_simulator
+
 import sys
 
 import logging
@@ -2211,6 +2211,8 @@ def get_runner(simulator_name: str) -> Runner:
     """
     # 一共实现了10个仿真器的runner的映射
     # 分别是icarus、questa、ghdl、riviera、activehdl、verilator、xcelium、nvc、vcs和dsim
+    if(simulator_name == "comopy"):
+        import comopy_simulator
     supported_sims: dict[str, type[Runner]] = {
         "icarus": Icarus,
         "questa": Questa,

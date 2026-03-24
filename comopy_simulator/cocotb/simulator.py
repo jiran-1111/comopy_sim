@@ -261,7 +261,7 @@ def register_timed_callback(time_steps, callback, *args):
             sys.__stdout__.write("DEBUG: [CoMoPy] RawModule detected, skipping tick(), running evaluate() only\n")
 
     _current_time_ps += time_steps
-    callback(*args)
+    callback(*args) # 暂时写成同步 立即执行回调
     return gpi_cb_hdl()
 
 # ——————————————回调注册——————————————————————

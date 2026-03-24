@@ -10,4 +10,4 @@ class SimpleDut(RawModule):
     @comb
     def logic(s):
 
-        s.q /= s.a * s.b
+        s.q /= s.a + s.b
