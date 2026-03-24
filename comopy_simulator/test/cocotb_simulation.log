@@ -1,30 +1,28 @@
 INFO     cocotb               Running on CoMoPy version 1.0
-INFO     cocotb               Seeding Python random module with 1774336392
+INFO     cocotb               Seeding Python random module with 1774344513
 INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
-DEBUG    cocotb.regression    Registered test 'test_comopy.test_1'
 DEBUG    cocotb.regression    Registered test 'test_comopy.test_2'
+DEBUG    cocotb.regression    Registered test 'test_comopy.test_1'
 DEBUG    cocotb.regression    Registered test 'test_comopy.adder_basic_test'
 DEBUG    cocotb.regression    Registered test 'test_comopy.adder_randomised_test'
 INFO     cocotb               Running tests
-INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.test_1 (1/4)
-INFO     cocotb.regression    test_comopy.test_1 [32mpassed[49m[39m
-INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.test_2 (2/4)
+INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.test_2 (1/4)
 INFO     cocotb.regression    test_comopy.test_2 [32mpassed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.test_1 (2/4)
+INFO     cocotb.regression    test_comopy.test_1 [32mpassed[49m[39m
 INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.adder_basic_test (3/4)
-    Test for 5 + 10
 INFO     cocotb.regression    test_comopy.adder_basic_test [32mpassed[49m[39m
 INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.adder_randomised_test (4/4)
-    Test for adding 2 random numbers multiple times
 INFO     cocotb.regression    test_comopy.adder_randomised_test [32mpassed[49m[39m
 INFO     cocotb.regression    *******************************************************************************************
 ** TEST                               STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
 *******************************************************************************************
-** test_comopy.test_1                 [32m PASS [49m[39m          5.00           0.00       3213.53  **
-** test_comopy.test_2                 [32m PASS [49m[39m         10.00           0.00      40021.98  **
-** test_comopy.adder_basic_test       [32m PASS [49m[39m          2.00           0.00       8073.73  **
-** test_comopy.adder_randomised_test  [32m PASS [49m[39m         20.00           0.00       9971.01  **
+** test_comopy.test_2                 [32m PASS [49m[39m         10.00           0.00       6576.21  **
+** test_comopy.test_1                 [32m PASS [49m[39m          5.00           0.00      21709.65  **
+** test_comopy.adder_basic_test       [32m PASS [49m[39m          2.00           0.00       8525.01  **
+** test_comopy.adder_randomised_test  [32m PASS [49m[39m         20.00           0.00      11000.01  **
 *******************************************************************************************
-** TESTS=4 PASS=4 FAIL=0 SKIP=0                      37.00           0.01       5678.81  **
+** TESTS=4 PASS=4 FAIL=0 SKIP=0                      37.00           0.01       5962.42  **
 *******************************************************************************************
 
 INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

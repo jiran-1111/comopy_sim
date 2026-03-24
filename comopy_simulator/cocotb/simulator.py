@@ -15,6 +15,10 @@ else:
 _active_comopy_sim = None
 _comopy_engine = None 
 _current_time_ps = 0
+
+import heapq
+_event_loop = []
+
 # === 类定义 (对应 GPI 接口) ===
 
 # 这个clock是否是需要实现的
@@ -191,9 +195,12 @@ class gpi_sim_hdl:
 """
 class gpi_cb_hdl: 
     """对应 C++ 中的 GpiCbHdl 类。代表一个已注册的回调（如 Timer, Edge）。"""
+    def __init__(self, event_tuple=None):
+        self.event_tuple = event_tuple
+        self.active = True
     def deregister(self): 
         """取消已注册的回调，使其不再触发。"""
-        pass
+        self.active = False
     def __eq__(self, other: object) -> bool:
         """判断两个回调句柄是否相同"""
         return self is other
@@ -240,29 +247,50 @@ def get_sim_time() -> tuple[int, int]:
 
 """重要的时间推进函数"""
 # 执行await timer
-def register_timed_callback(time_steps, callback, *args):
-    global _current_time_ps, _comopy_engine
-    
-    import comopy.hdl as HDL # 导入用于判断
-    
-    if _comopy_engine:
-        # 检查是否有对应的 Module 实例且具有 clk 属性
-        dut_obj = getattr(_comopy_engine, "_module", None)
-        
-        # 判断：只有当它是真正的 HDL.Module (带有时钟) 时才调用 tick
-        if isinstance(dut_obj, HDL.Module) and hasattr(dut_obj, 'clk'):
-            num_ticks = time_steps // 1000 
-            for _ in range(max(1, num_ticks)):
-                _comopy_engine.tick()
-        else:
-            # 如果是 RawModule (无时钟)，我们只同步逻辑评估，不触发时钟边沿
-            # 这样就不会触发 CoMoPy 内部的 RuntimeError 了
-            _comopy_engine.evaluate()
-            sys.__stdout__.write("DEBUG: [CoMoPy] RawModule detected, skipping tick(), running evaluate() only\n")
+# 建议放在全局作用域，确保 patch 之前已经定义好
+_is_processing = False
 
-    _current_time_ps += time_steps
-    callback(*args) # 暂时写成同步 立即执行回调
-    return gpi_cb_hdl()
+def register_timed_callback(time_steps, callback, *args):
+    global _current_time_ps, _is_processing, _comopy_engine
+    
+    # 1. 将新事件加入堆（注意：cocotb 可能会注册当前时间的事件）
+    target_time = _current_time_ps + time_steps
+    event_packet = [target_time, callback, args, True]
+    heapq.heappush(_event_loop, event_packet)
+    
+    # 2. 如果当前没有人在跑循环，我来跑
+    if not _is_processing:
+        _is_processing = True
+        try:
+            # 只要队列里有东西，就一直跑
+            while _event_loop:
+                # 总是取时间最早的事件
+                t, cb, a, active = heapq.heappop(_event_loop)
+                
+                # 时间推进与硬件同步
+                time_diff = t - _current_time_ps
+                if _comopy_engine and time_diff > 0:
+                    import comopy.hdl as HDL
+                    dut_obj = getattr(_comopy_engine, "_module", None)
+                    if isinstance(dut_obj, HDL.Module) and hasattr(dut_obj, 'clk'):
+                        num_ticks = time_diff // 1000
+                        for _ in range(max(1, num_ticks)):
+                            _comopy_engine.tick()
+                    else:
+                        _comopy_engine.evaluate()
+                
+                _current_time_ps = t
+                
+                # 执行回调。
+                # 重要：cb(*a) 可能会内部调用 register_timed_callback 往堆里加新东西
+                if active:
+                    cb(*a)
+                
+                # 不要在这里 break！让循环继续检查堆里是否有下一个测试的启动事件
+        finally:
+            _is_processing = False
+
+    return gpi_cb_hdl(event_packet)
 
 # ——————————————回调注册——————————————————————
 """请求在delta step(逻辑重新评估一次后执行回调)"""
