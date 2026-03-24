@@ -1,16 +1,20 @@
 INFO     cocotb               Running on CoMoPy version 1.0
-INFO     cocotb               Seeding Python random module with 1774267993
+INFO     cocotb               Seeding Python random module with 1774335566
 INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
-DEBUG    cocotb.regression    Registered test 'test_comopy.test_only_timer'
+DEBUG    cocotb.regression    Registered test 'test_comopy.test_1'
+DEBUG    cocotb.regression    Registered test 'test_comopy.test_2'
 INFO     cocotb               Running tests
-INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.test_only_timer (1/1)
-INFO     cocotb.regression    test_comopy.test_only_timer [32mpassed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.test_1 (1/2)
+INFO     cocotb.regression    test_comopy.test_1 [32mpassed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.test_2 (2/2)
+INFO     cocotb.regression    test_comopy.test_2 [32mpassed[49m[39m
 INFO     cocotb.regression    **************************************************************************************
 ** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
 **************************************************************************************
-** test_comopy.test_only_timer   [32m PASS [49m[39m          2.00           0.00        968.33  **
+** test_comopy.test_1            [32m PASS [49m[39m         10.00           0.00       6611.45  **
+** test_comopy.test_2            [32m PASS [49m[39m         10.00           0.00      35757.07  **
 **************************************************************************************
-** TESTS=1 PASS=1 FAIL=0 SKIP=0                  2.00           0.00        640.16  **
+** TESTS=2 PASS=2 FAIL=0 SKIP=0                 20.00           0.00       6506.15  **
 **************************************************************************************
 
 INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

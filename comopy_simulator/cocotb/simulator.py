@@ -17,6 +17,7 @@ _comopy_engine = None
 _current_time_ps = 0
 # === 类定义 (对应 GPI 接口) ===
 
+# 这个clock是否是需要实现的
 class cpp_clock:
     def __init__(self, signal: 'gpi_sim_hdl') -> None:
         self.signal = signal
@@ -31,16 +32,10 @@ class gpi_sim_hdl:
         self.obj = obj 
         self.sim = sim_engine 
         self.hdl = self
-        # 显式绑定，确保 cocotb 底层调用的是这个驱动函数
         self._set_value = self.set_signal_val_int
 
-    def get_const(self) -> bool: return False
-    def get_definition_file(self) -> str: return "virtual.v"
-    def get_definition_name(self) -> str: return "logic"
-    def get_handle_by_index(self, index: int) -> 'gpi_sim_hdl | None': return None
-    
     def get_handle_by_name(self, name: str, discovery_method: int = 0) -> 'gpi_sim_hdl' | None:
-        # 在 RawModule assemble 之后，端口 a, q 会直接作为属性
+        """找到信号对象 返回gpi_sim_hdl对象"""
         target = getattr(self.obj, name, None)
         if target is None and hasattr(self.obj, '_ports'):
             for p in self.obj._ports:
@@ -49,49 +44,26 @@ class gpi_sim_hdl:
                     break
         if target is not None:
             return gpi_sim_hdl(name=name, obj=target, sim_engine=self.sim)
+        else :
+            sys.__stdout__.write(f"failes: can not find signal {name} \n")
         return None
-
-    def get_indexable(self) -> bool: return False
-    def get_name_string(self) -> str: return self.name
-    def get_num_elems(self) -> int: 
-        return getattr(self.obj, 'nbits', 1)
-
-    def get_range(self) -> tuple[int, int, int]: 
-        # 修正：cocotb 期望返回 (left, right, direction)
-        # 对于 3-bit 信号 [2:0]，应该是 (2, 0, -1) 代表 downto
-        nbits = self.get_num_elems()
-        return (nbits - 1, 0, -1)
     
-    def get_signal_val_binstr(self) -> str:
-        val = self.get_signal_val_long()
-        nbits = self.get_num_elems()
-        return bin(val)[2:].zfill(nbits)
-
-    def get_signal_val_long(self) -> int:
-        try:
-            # CoMoPy/PyMTL3 信号对象读取真实值的标准方法
-            if hasattr(self.obj, 'uint'):
-                return int(self.obj.uint())
-            return int(self.obj)
-        except:
-            return 0
-
-    def get_signal_val_real(self) -> float: return 0.0
-    def get_signal_val_str(self) -> bytes: return b""
-
     def get_type(self) -> int:
-        # 判定是否为模块（Hierarchy）
+        """判定为模块还是信号"""
         if hasattr(self.obj, '_ports') or (hasattr(self.obj, 'is_module') and self.obj.is_module):
             return 2 # MODULE
-        # 判定是否为向量或标量
+        # 如果位宽是1 则返回单比特信号 其他为向量信号
+        # "LOGIC": 15, "LOGIC_ARRAY": 16
         return 16 if self.get_num_elems() > 1 else 15
 
-    def get_type_string(self) -> str: 
-        return "MODULE" if self.get_type() == 2 else "LOGIC"
-
-    def iterate(self, mode: int) -> 'gpi_iterator_hdl': return gpi_iterator_hdl()
-
     def set_signal_val_int(self, action: int, value: int) -> None: 
+        """支持整数写入"""
+        # 使用dut.a._handle.set_signal_val_int(0,2) 可以写入 现在双保险
+        # 底层模拟simulator
+        if self.get_definition_name() == "output port":
+            # 底层也抛出异常
+            raise RuntimeError(f"GPI_ERROR: Cannot write to output signal {self.name}")
+        
         try:
             # 写硬件
             self.obj /= value 
@@ -104,45 +76,170 @@ class gpi_sim_hdl:
             sys.__stdout__.write(f"DEBUG: [CoMoPy Drive] {self.name} = {value}\n")
         except Exception as e:
             sys.__stdout__.write(f"DEBUG: [Drive Failed] {e}\n")
+    
     def set_signal_val_binstr(self, action: int, value: str) -> None:
-        self.set_signal_val_int(0, int(value, 2))
+        """支持二进制字符串"""
+        # x z简单过滤换成0
+        safe_value = value.replace('x', '0').replace('z', '0').replace('u', '0')
+        self.set_signal_val_int(0, int(safe_value, 2))
+    
+    def set_signal_val_real(self, action: int, value: float) -> None:
+        """支持浮点数写入，自动四舍五入"""
+        val_int = int(round(value))
+        sys.__stdout__.write(f"DEBUG: [Real to Int] Converting {value} to {val_int}\n")
+        self.set_signal_val_int(action, val_int)
 
+    def set_signal_val_str(self, action: int, value: bytes) -> None:
+        """支持字节串写入，将其视为大端序整数"""
+        try:
+            # 尝试将字节转为大整数（大端序）
+            val_int = int.from_bytes(value, byteorder='big')
+            self.set_signal_val_int(action, val_int)
+        except Exception as e:
+            sys.__stdout__.write(f"ERROR: [Str Drive Failed] Cannot map {value} to hardware: {e}\n")
+
+    def get_indexable(self) -> bool: 
+        """是否支持下标访问 dut.mysignal[0] 待实现"""
+        return False
+    
+    def get_name_string(self) -> str: 
+        """"返回信号在硬件层级中的原始名称"""
+        return self.name
+    
+    def get_num_elems(self) -> int: 
+        """返回该信号位宽"""
+        return getattr(self.obj, 'nbits', 1)
+
+    def get_range(self) -> tuple[int, int, int]: 
+        """定义信号的索引范围和方向"""
+        # 返回值含义（左边界，右边界，方向） -1 downto
+        nbits = self.get_num_elems()
+        return (nbits - 1, 0, -1)
+    
+    def get_const(self) -> bool: 
+        """信号是否是常量 为常量则禁止写"""
+        return False
+    
+    def get_definition_file(self) -> str:
+        """返回hdl文件名"""
+        return "hdl_design.py"
+
+    def get_definition_name(self) -> str:
+        """根据属性判断硬件结构 日志使用"""
+        # 逻辑：根据 CoMoPy 对象的属性来判定它在硬件里的“角色”
+        if self.get_type() == 2: 
+            return "module"
+        if hasattr(self.obj, 'is_input_port') and self.obj.is_input_port:
+            return "input port"
+        if hasattr(self.obj, 'is_output_port') and self.obj.is_output_port:
+            return "output port"
+        return "wire"
+    
+    def get_handle_by_index(self, index: int) -> 'gpi_sim_hdl | None': 
+        """通过索引获取子信号 用于访问数组"""
+        return None
+ 
+    def get_signal_val_binstr(self) -> str:
+        """将当前的信号值读取为二进制字符串"""
+        val = self.get_signal_val_long()
+        nbits = self.get_num_elems()
+        return bin(val)[2:].zfill(nbits)
+
+    def get_signal_val_long(self) -> int:
+        """核心读操作"""
+        try:
+            # 获取原始数据对象
+            raw_data = getattr(self.obj, '_data', None)
+            if raw_data is not None:
+                return int(raw_data)
+            return int(self.obj)
+        except Exception as e:
+            # sys.__stdout__.write(f"READ ERROR: {e}\n")
+            return 0
+
+    def get_signal_val_real(self) -> float: 
+        """将当前的信号值读取为浮点数"""
+        return 0.0
+    
+    def get_signal_val_str(self) -> bytes: 
+        """将当前的信号值读取为字节串"""
+        return b""
+
+    def get_type_string(self) -> str: 
+        """返回信号的类型"""
+        return "MODULE" if self.get_type() == 2 else "LOGIC"
+
+    def iterate(self, mode: int) -> 'gpi_iterator_hdl': 
+        """层次迭代器 未实现 dump依赖该迭代器"""
+        return gpi_iterator_hdl()
+
+    def __eq__(self, other: object) -> bool:
+        """如果底层硬件对象是同一个，则句柄相同"""
+        if not isinstance(other,gpi_sim_hdl):
+            return False
+        return self.obj is other.obj
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+    
+    def __hash__(self) -> int: 
+        """使用底层对象的内存地址作为hash"""
+        return id(self.obj)
+
+"""
+注册回调函数
+"""
 class gpi_cb_hdl: 
     """对应 C++ 中的 GpiCbHdl 类。代表一个已注册的回调（如 Timer, Edge）。"""
     def deregister(self): 
         """取消已注册的回调，使其不再触发。"""
         pass
-    def __eq__(self, other: object) -> bool: return self is other
-    def __ne__(self, other: object) -> bool: return not self.__eq__(other)
-    def __hash__(self) -> int: return id(self)
+    def __eq__(self, other: object) -> bool:
+        """判断两个回调句柄是否相同"""
+        return self is other
+    def __ne__(self, other: object) -> bool: 
+        """判断不等于"""
+        return not self.__eq__(other)
+    def __hash__(self) -> int: 
+        """生成哈希值"""
+        return id(self)
 
+"""
+需要gpi_sim_hdl的iterate方法喂给他数据
+"""
 class gpi_iterator_hdl: 
     """对应 C++ 中的 GpiIteratorHdl 类。用于遍历层级。"""
-    def __eq__(self, other: object) -> bool: return self is other
-    def __ne__(self, other: object) -> bool: return not self.__eq__(other)
-    def __hash__(self) -> int: return id(self)
-    def __iter__(self) : return self
+    def __eq__(self, other: object) -> bool: 
+        """相等"""
+        return self is other
+    def __ne__(self, other: object) -> bool: 
+        """不等"""
+        return not self.__eq__(other)
+    def __hash__(self) -> int: 
+        """哈希"""
+        return id(self)
+    def __iter__(self) : 
+        """返回迭代器对象本身"""
+        return self
     def __next__(self) -> gpi_sim_hdl: 
+        """获取下一个信号句柄"""
         raise StopIteration
 
 # === 全局定义的 GPI 接口函数 17个 ===
+# 全局时间
 current_time_ps = 0
-
+# ————————————————时间管理类————————————
+"""仿真最小单位"""
 def get_precision() -> int: return -12
+
+"""返回当前的仿真时间 64位"""
 def get_sim_time() -> tuple[int, int]: 
     global _current_time_ps
     t = int(_current_time_ps)
     return (t >> 32 & 0xFFFFFFFF, t & 0xFFFFFFFF)
 
-def get_simulator_product() -> str: return "CoMoPy"
-def get_simulator_version() -> str: return "1.0"
-def is_running() -> bool: return True
-def set_gpi_log_level(level: int) -> None: pass
-def package_iterate() -> gpi_iterator_hdl: return gpi_iterator_hdl()
-def register_nextstep_callback(func, *args): return gpi_cb_hdl()
-def register_readonly_callback(func, *args): return gpi_cb_hdl()
-def register_rwsynch_callback(func, *args): return gpi_cb_hdl()
-
+"""重要的时间推进函数"""
+# 执行await timer
 def register_timed_callback(time_steps, callback, *args):
     global _current_time_ps, _comopy_engine
     
@@ -167,10 +264,50 @@ def register_timed_callback(time_steps, callback, *args):
     callback(*args)
     return gpi_cb_hdl()
 
-def register_value_change_callback(signal, func, edge, *args): return gpi_cb_hdl()
-def stop_simulator(): print("--- [CoMoPy] Simulator Stopped ---")
-def clock_create(hdl: gpi_sim_hdl): return cpp_clock(hdl.hdl)
+# ——————————————回调注册——————————————————————
+"""请求在delta step(逻辑重新评估一次后执行回调)"""
+def register_nextstep_callback(func, *args): return gpi_cb_hdl()
+"""请求在当前仿真时刻的只读阶段执行 实现await readonly"""
+def register_readonly_callback(func, *args): return gpi_cb_hdl()
+"""在读写同步阶段执行 允许在此阶段读写"""
+def register_rwsynch_callback(func, *args): return gpi_cb_hdl()
 
+"""重要 实现await risingedge fallingedge"""
+def register_value_change_callback(signal, func, edge, *args): 
+    return gpi_cb_hdl()
+
+"""设置仿真时间的全局回调"""
+def set_sim_event_callback(sim_event_callback): pass
+
+# ————————————仿真器元数据——————————————
+"""返回仿真器名称"""
+def get_simulator_product() -> str: return "CoMoPy"
+"""返回版本号"""
+def get_simulator_version() -> str: return "1.0"
+"""检查仿真器是否在运行"""
+def is_running() -> bool: return True
+
+"""获取设计的顶层句柄"""
+def get_root_handle(name: str | None) -> gpi_sim_hdl | None: 
+    return gpi_sim_hdl(name if name else "top",
+                        obj = name,
+                        sim_engine=name)
+"""遍历sv里面的package comopy暂无"""
+def package_iterate() -> gpi_iterator_hdl: return gpi_iterator_hdl()
+
+
+
+# ——————————————系统集成与日志——————————————————
+
+"""所有测试完成时调用 打印结束标志"""
+def stop_simulator(): 
+    print("--- [CoMoPy] Simulator Stopped ---")
+
+"""创建底层时钟对象"""
+def clock_create(hdl: gpi_sim_hdl): 
+    return cpp_clock(hdl.hdl)
+
+"""接管日志系统"""
 def initialize_logger(
     log_func: Callable[["Logger", int, str, int, str, str], None],
     get_logger: Callable[[str], "Logger"],
@@ -195,12 +332,11 @@ def initialize_logger(
     
     print(f"--- [CoMoPy] Logging redirected to: {os.path.abspath(log_file)} ---")
 
-def set_sim_event_callback(sim_event_callback): pass
+"""设置底层gpi日志详细程度"""
+def set_gpi_log_level(level: int) -> None: pass
 
-def get_root_handle(name: str | None) -> gpi_sim_hdl | None: 
-    return gpi_sim_hdl(name if name else "top",
-                        obj = name,
-                        sim_engine=name)
+
+
 
 # === 注入核心函数 ===
 
@@ -257,7 +393,7 @@ def patch_cocotb_simulator(comopy_sim_instance):
     sim.gpi_cb_hdl = gpi_cb_hdl
     sim.gpi_iterator_hdl = gpi_iterator_hdl
     sim.cpp_clock = cpp_clock
-# 4. 【核心黑科技：全路径覆盖】
+    # 全路径覆盖
     sys.modules["cocotb.simulator"] = sim
     cocotb.simulator = sim
 
@@ -284,13 +420,24 @@ def patch_cocotb_simulator(comopy_sim_instance):
     # 5. --- 属性拦截保持不变 ---
     import cocotb.handle
     
+    # python的handle层截断后续流程 高层次拦截
+   
+    
     def forced_value_setter(self, value):
+        # 修正：通过 self._handle 调用你定义的 GPI 接口函数
+        if self._handle.get_definition_name() == "output port":
+            error_msg = f"COCOTB_ERROR: Attempting to drive output port '{self._path}'! This is illegal in hardware."
+            # 抛出异常会直接中断当前的 cocotb.test
+            raise AttributeError(error_msg) 
+
         val_int = int(value)
         # 直接写硬件
         self._handle.obj /= val_int
+        
         # 立即评估逻辑
         if self._handle.sim and hasattr(self._handle.sim, 'evaluate'):
             self._handle.sim.evaluate()
+            
         # 调试输出
         sys.__stdout__.write(f"\n[CRITICAL HOOK] {self._path} SET TO {val_int}\n")
         sys.__stdout__.flush()
