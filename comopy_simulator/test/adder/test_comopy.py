@@ -3,27 +3,7 @@ from cocotb.clock import Clock  # 导入时钟驱动工具
 from cocotb.triggers import RisingEdge, Timer
 import sys
 import random
-"""
-@cocotb.test()
-async def test_0(dut):
-    dut.clk.value = 0
-    await Timer(1, unit="ns")
-    
-    # 先启动时钟协程
-    clock = Clock(dut.clk, 10, unit="ns")
-    cocotb.start_soon(clock.start())
-    
-    await Timer(1, unit="ns") # 给时钟一点启动时间
-    
-    dut.a.value = 2
-    dut.b.value = 3
-    await Timer(1, "ps")
-    print("Waiting for RisingEdge...")
-    # 这里会阻塞，直到 cpp_clock._tick 里的 set_signal_val_int 触发 _check_value_change_callbacks
-    await RisingEdge(dut.clk) 
-    print(f"GOT EDGE! Result: {dut.q.value}")
 
-"""
 # 加法器的基本测试
 @cocotb.test()
 async def test_2(dut):

@@ -11,5 +11,5 @@ class SimpleDut(RawModule):
         s.q = Output(5)
 
     @comb
-    def update_ff(s):
+    def update(s):
         s.q /= s.a + s.b

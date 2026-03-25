@@ -246,11 +246,16 @@ def get_sim_time() -> tuple[int, int]:
     t = int(_current_time_ps)
     return (t >> 32 & 0xFFFFFFFF, t & 0xFFFFFFFF)
 
-"""重要的时间推进函数"""
+
 # 执行await timer
 # 建议放在全局作用域，确保 patch 之前已经定义好
 _is_processing = False
 
+# 信号边沿检测器
+"""
+遍历所有的注册的信号回调
+读取信号的当前值 对比存储的旧值
+"""
 def _check_value_change_callbacks():
     global _value_change_callbacks
     if not _value_change_callbacks:
@@ -262,7 +267,7 @@ def _check_value_change_callbacks():
     for item in _value_change_callbacks:
         signal, edge_type, cb, args, cb_hdl = item
         
-        if not cb_hdl.activate: # 如果已经被取消了
+        if not cb_hdl.active: # 如果已经被取消了
             continue
 
         new_val = signal.get_signal_val_long()
@@ -294,7 +299,9 @@ def _check_value_change_callbacks():
     # 批量执行触发的回调
     for cb, args in triggered:
         cb(*args)
-        
+
+"""重要的时间推进函数"""     
+# 时间推进与时间循环 
 def register_timed_callback(time_steps, callback, *args):
     global _current_time_ps, _is_processing, _comopy_engine
     
@@ -327,6 +334,9 @@ def register_timed_callback(time_steps, callback, *args):
                 _current_time_ps = t
                 if active:
                     cb(*a)
+                
+                print(f"[DEBUG] Advancing time by {time_diff}ps, current: {_current_time_ps}ps")
+
         finally:
             _is_processing = False
     return gpi_cb_hdl(event_packet)
