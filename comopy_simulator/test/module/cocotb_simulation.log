@@ -1,0 +1,16 @@
+INFO     cocotb               Running on CoMoPy version 1.0
+INFO     cocotb               Seeding Python random module with 1774422140
+INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
+DEBUG    cocotb.regression    Registered test 'test_module.test_0'
+INFO     cocotb               Running tests
+INFO     cocotb.regression    [34mrunning[49m[39m test_module.test_0 (1/1)
+INFO     cocotb.regression    test_module.test_0 [32mpassed[49m[39m
+INFO     cocotb.regression    **************************************************************************************
+** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+**************************************************************************************
+** test_module.test_0            [32m PASS [49m[39m          1.00           0.00        423.58  **
+**************************************************************************************
+** TESTS=1 PASS=1 FAIL=0 SKIP=0                  1.00           0.00        300.13  **
+**************************************************************************************
+
+INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

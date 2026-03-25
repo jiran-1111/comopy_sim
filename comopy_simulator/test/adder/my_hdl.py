@@ -1,7 +1,7 @@
 from comopy.hdl import *
 
 
-class SimpleDut(RawModule):
+class SimpleDut(Module):
   
     @build
     def ports(s):

@@ -7,18 +7,21 @@ import random
 @cocotb.test()
 async def test_0(dut):
     
-    clock = Clock(dut.clk, 10, unit="ns") 
-    cocotb.start_soon(clock.start())
-    await Timer(1, unit="ns") # 给时钟一点启动时间
+    #clock = Clock(dut.clk, 10, unit="ns") 
+    #cocotb.start_soon(clock.start())
+    
+    dut.clk.value = 0
+    await Timer(1, unit="ns") # 给时钟一点启动时间 
     A = 2
     B = 3
     dut.a.value = A
     dut.b.value = B
-    
+
+    dut.clk.value = 1 
     print("Waiting for RisingEdge...")
     # 这里会阻塞，直到 cpp_clock._tick 里的 set_signal_val_int 触发 _check_value_change_callbacks
-    await RisingEdge(dut.clk) 
-    print(f"GOT EDGE! Result: {dut.q.value}")
+    print(f"Result q: {dut.q.value}") 
+    print(f"Result q_ff: {dut.q_ff.value}")
     assert dut.q.value == A + B
 
 # 加法器的基本测试

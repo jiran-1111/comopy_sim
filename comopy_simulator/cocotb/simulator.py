@@ -302,6 +302,7 @@ def _check_value_change_callbacks():
 
 """重要的时间推进函数"""     
 # 时间推进与时间循环 
+import comopy.hdl as HDL
 def register_timed_callback(time_steps, callback, *args):
     global _current_time_ps, _is_processing, _comopy_engine
     
@@ -321,7 +322,9 @@ def register_timed_callback(time_steps, callback, *args):
                 if _comopy_engine and time_diff > 0:
                     # --- 执行硬件演进 ---
                     dut_obj = getattr(_comopy_engine, "_module", None)
-                    if hasattr(dut_obj, 'clk'):
+                    
+                    # 如果是module 则执行时钟步进
+                    if isinstance(dut_obj, HDL.Module):
                         num_ticks = time_diff // 1000
                         for _ in range(max(1, num_ticks)):
                             _comopy_engine.tick()
