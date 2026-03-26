@@ -1,5 +1,5 @@
 INFO     cocotb               Running on CoMoPy version 1.0
-INFO     cocotb               Seeding Python random module with 1774421653
+INFO     cocotb               Seeding Python random module with 1774504572
 INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
 DEBUG    cocotb.regression    Registered test 'test_risingedge.test_0'
 DEBUG    cocotb.regression    Registered test 'test_risingedge.test_1'
@@ -20,13 +20,13 @@ INFO     cocotb.regression    test_risingedge.test_4 [32mpassed[49m[39m
 INFO     cocotb.regression    **************************************************************************************
 ** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
 **************************************************************************************
-** test_risingedge.test_0        [32m PASS [49m[39m          1.00           0.00        465.21  **
-** test_risingedge.test_1        [32m PASS [49m[39m         10.00           0.00      32413.48  **
-** test_risingedge.test_2        [32m PASS [49m[39m          5.00           0.00      18624.80  **
-** test_risingedge.test_3        [32m PASS [49m[39m          2.00           0.00       7384.34  **
-** test_risingedge.test_4        [32m PASS [49m[39m         20.00           0.00       8823.61  **
+** test_risingedge.test_0        [32m PASS [49m[39m          1.00           0.00        500.39  **
+** test_risingedge.test_1        [32m PASS [49m[39m         10.00           0.00      27999.36  **
+** test_risingedge.test_2        [32m PASS [49m[39m          5.00           0.00      18347.79  **
+** test_risingedge.test_3        [32m PASS [49m[39m          2.00           0.00       6932.73  **
+** test_risingedge.test_4        [32m PASS [49m[39m         20.00           0.00       6879.86  **
 **************************************************************************************
-** TESTS=5 PASS=5 FAIL=0 SKIP=0                 38.00           0.01       4364.98  **
+** TESTS=5 PASS=5 FAIL=0 SKIP=0                 38.00           0.01       4124.84  **
 **************************************************************************************
 
 INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

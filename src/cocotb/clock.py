@@ -327,7 +327,7 @@ class Clock:
                     clkobj.stop()
 
         else:
-
+            # 纯python协程的时钟
             async def drive() -> None:
                 timer_high = Timer(self._period_high_steps)
                 timer_low = Timer(self._period_steps - self._period_high_steps)

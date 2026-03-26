@@ -157,6 +157,7 @@ class Timer(GPITrigger):
             self._sim_steps = 1
 
     def _prime(self) -> None:
+        # 调用回调
         self._cbhdl = simulator.register_timed_callback(self._sim_steps, self._react)
         if self._cbhdl is None:
             raise RuntimeError(f"Unable set up {self} Trigger")

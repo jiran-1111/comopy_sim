@@ -12,16 +12,16 @@ else:
     GPIDiscovery = Any
     Logger = Any
 
-_active_comopy_sim = None
 _comopy_engine = None 
 _current_time_ps = 0
+_is_processing = False
 
 import heapq
 _event_loop = []
 
 # === 类定义 (对应 GPI 接口) ===
 
-# 这个clock是否是需要实现的
+# 没有设置 _impl为gpi 使用python时钟
 class cpp_clock:
     def __init__(self, signal: 'gpi_sim_hdl') -> None:
         self.signal = signal
@@ -42,11 +42,13 @@ class gpi_sim_hdl:
     def get_handle_by_name(self, name: str, discovery_method: int = 0) -> 'gpi_sim_hdl' | None:
         """找到信号对象 返回gpi_sim_hdl对象"""
         target = getattr(self.obj, name, None)
+        
         if target is None and hasattr(self.obj, '_ports'):
             for p in self.obj._ports:
                 if getattr(p, 'name', '') == name:
                     target = p
                     break
+        
         if target is not None:
             return gpi_sim_hdl(name=name, obj=target, sim_engine=self.sim)
         else :
@@ -63,8 +65,12 @@ class gpi_sim_hdl:
 
     def set_signal_val_int(self, action: int, value: int) -> None: 
         """支持整数写入"""
+        print(f"\n[HIT] GPI set_signal_val_int called for {self.name} with {value}\n")
+
         # 使用dut.a._handle.set_signal_val_int(0,2) 可以写入 现在双保险
         # 底层模拟simulator
+        # 输出端口禁止写
+        print(f"DEBUG: Driving {self.name} with {value}, type is {self.get_definition_name()}")
         if self.get_definition_name() == "output port":
             # 底层也抛出异常
             raise RuntimeError(f"GPI_ERROR: Cannot write to output signal {self.name}")
@@ -73,7 +79,7 @@ class gpi_sim_hdl:
             # 写硬件
             self.obj /= value 
             
-            # --- 真正的连接点 A：组合逻辑评估 ---
+            # 逻辑评估 
             if _comopy_engine:
                 # 每次输入改变，立即评估受影响的组合逻辑块
                 _comopy_engine.evaluate()
@@ -152,14 +158,16 @@ class gpi_sim_hdl:
 
     def get_signal_val_long(self) -> int:
         """核心读操作"""
+
         try:
-            # 获取原始数据对象
+            # 优先读取 _data 属性
             raw_data = getattr(self.obj, '_data', None)
             if raw_data is not None:
                 return int(raw_data)
+            # 如果是信号对象，尝试强转
             return int(self.obj)
         except Exception as e:
-            # sys.__stdout__.write(f"READ ERROR: {e}\n")
+            # 不要只打印，给个默认值 0 保证 cocotb 不崩溃
             return 0
 
     def get_signal_val_real(self) -> float: 
@@ -192,7 +200,7 @@ class gpi_sim_hdl:
         return id(self.obj)
 
 """
-注册回调函数
+回调函数
 """
 class gpi_cb_hdl: 
     """对应 C++ 中的 GpiCbHdl 类。代表一个已注册的回调（如 Timer, Edge）。"""
@@ -213,7 +221,7 @@ class gpi_cb_hdl:
         return id(self)
 
 """
-需要gpi_sim_hdl的iterate方法喂给他数据
+需要gpi_sim_hdl的iterate方法喂给他数据 待实现
 """
 class gpi_iterator_hdl: 
     """对应 C++ 中的 GpiIteratorHdl 类。用于遍历层级。"""
@@ -235,7 +243,7 @@ class gpi_iterator_hdl:
 
 # === 全局定义的 GPI 接口函数 17个 ===
 # 全局时间
-current_time_ps = 0
+_current_time_ps = 0
 # ————————————————时间管理类————————————
 """仿真最小单位"""
 def get_precision() -> int: return -12
@@ -249,30 +257,104 @@ def get_sim_time() -> tuple[int, int]:
 
 # 执行await timer
 # 建议放在全局作用域，确保 patch 之前已经定义好
-_is_processing = False
 
 # 信号边沿检测器
 """
 遍历所有的注册的信号回调
 读取信号的当前值 对比存储的旧值
 """
+
+"""重要的时间推进函数"""     
+# 时间推进与时间循环 
+
+def cleanup_test():
+    global _event_loop
+    _event_loop.clear()
+
+import comopy.hdl as HDL
+_event_count = 0 
+# await Timer(10,"ns") 调用register_timed_callback(10000,callback) 目标时间，回调函数
+# risingedge 暂时没有改好
+# 每次tick完 调用_check_value_change_callbacks 检查是否有边沿触发的回调
+
+def register_timed_callback(time_steps, callback, *args):
+    global _current_time_ps, _is_processing, _comopy_engine
+    global _event_count
+    _event_count += 1
+    # 1. 将新事件加入堆（注意：cocotb 可能会注册当前时间的事件）
+    target_time = _current_time_ps + time_steps
+    event_packet = [target_time, _event_count,callback, args, True]
+    heapq.heappush(_event_loop, event_packet) # 放入堆中
+    
+    # 2. 跑循环
+    if not _is_processing:
+        _is_processing = True
+        try:
+            while _event_loop:
+                if not is_running():
+                    break 
+                t,cnt, cb, a, active = heapq.heappop(_event_loop)
+                # 目标触发时间 计数器  回调函数 函数参数 有效性
+                time_diff = t - _current_time_ps # 当前时间与目标时间的差值time_diff
+                if _comopy_engine and time_diff > 0:
+                    # 硬件演进
+                    dut_obj = getattr(_comopy_engine, "_module", None)
+                    
+                    # 如果是module 则执行时钟步进
+                    if isinstance(dut_obj, HDL.Module):
+                        # 现仅支持步长为1000ps的时钟
+                        num_ticks = time_diff // 1000
+                        for _ in range(max(1, num_ticks)):
+                            _comopy_engine.tick()
+                            # 每 tick 一次，检查一次边沿回调
+                            _check_value_change_callbacks() 
+                    else:
+                        _comopy_engine.evaluate()
+                        _check_value_change_callbacks()
+                
+                _current_time_ps = t
+                if active:
+                    cb(*a) #执行回调
+                
+                print(f"[DEBUG] Advancing time by {time_diff}ps, current: {_current_time_ps}ps")
+
+        finally:
+            _is_processing = False
+    return gpi_cb_hdl(event_packet)
+
+# ——————————————回调注册——————————————————————
+"""请求在delta step(逻辑重新评估一次后执行回调)"""
+def register_nextstep_callback(func, *args): return gpi_cb_hdl()
+"""请求在当前仿真时刻的只读阶段执行 实现await readonly"""
+def register_readonly_callback(func, *args): return gpi_cb_hdl()
+"""在读写同步阶段执行 允许在此阶段读写"""
+def register_rwsynch_callback(func, *args): return gpi_cb_hdl()
+
+"""重要 实现await risingedge fallingedge"""
+
+# 所有等待信号变化的协程列表
+_value_change_callbacks = []
+# 检测边沿是否达到回调条件 如果should_trigger则触发回调
 def _check_value_change_callbacks():
     global _value_change_callbacks
     if not _value_change_callbacks:
         return
 
-    triggered = []
-    remaining = []
+    triggered = [] # 触发队列 满足边沿条件的任务
+    remaining = [] # 保留队列 没等到目标边沿的任务
 
     for item in _value_change_callbacks:
         signal, edge_type, cb, args, cb_hdl = item
-        
+        # 监控对象(dut.clk) 触发条件 回调函数 给回调的参数 有效性
         if not cb_hdl.active: # 如果已经被取消了
             continue
-
+        
+        # 新值和旧值比对
         new_val = signal.get_signal_val_long()
         old_val = signal._last_value
-        
+        sys.__stdout__.write(f"DEBUG: Signal {signal.name} {old_val} -> {new_val}\n")
+
+
         is_rising = (old_val == 0 and new_val == 1)
         is_falling = (old_val == 1 and new_val == 0)
         
@@ -297,73 +379,21 @@ def _check_value_change_callbacks():
     _value_change_callbacks = remaining
     
     # 批量执行触发的回调
+    print(f"DEBUG: Calling Cocotb callback: {cb}, type: {type(cb)}")
     for cb, args in triggered:
         cb(*args)
 
-"""重要的时间推进函数"""     
-# 时间推进与时间循环 
-import comopy.hdl as HDL
-def register_timed_callback(time_steps, callback, *args):
-    global _current_time_ps, _is_processing, _comopy_engine
-    
-    # 1. 将新事件加入堆（注意：cocotb 可能会注册当前时间的事件）
-    target_time = _current_time_ps + time_steps
-    event_packet = [target_time, callback, args, True]
-    heapq.heappush(_event_loop, event_packet)
-    
-    # 2. 如果当前没有人在跑循环，我来跑
-    if not _is_processing:
-        _is_processing = True
-        try:
-            while _event_loop:
-                t, cb, a, active = heapq.heappop(_event_loop)
-                
-                time_diff = t - _current_time_ps
-                if _comopy_engine and time_diff > 0:
-                    # --- 执行硬件演进 ---
-                    dut_obj = getattr(_comopy_engine, "_module", None)
-                    
-                    # 如果是module 则执行时钟步进
-                    if isinstance(dut_obj, HDL.Module):
-                        num_ticks = time_diff // 1000
-                        for _ in range(max(1, num_ticks)):
-                            _comopy_engine.tick()
-                            # 每 tick 一次，检查一次边沿回调
-                            _check_value_change_callbacks() 
-                    else:
-                        _comopy_engine.evaluate()
-                        _check_value_change_callbacks()
-                
-                _current_time_ps = t
-                if active:
-                    cb(*a)
-                
-                print(f"[DEBUG] Advancing time by {time_diff}ps, current: {_current_time_ps}ps")
-
-        finally:
-            _is_processing = False
-    return gpi_cb_hdl(event_packet)
-
-# ——————————————回调注册——————————————————————
-"""请求在delta step(逻辑重新评估一次后执行回调)"""
-def register_nextstep_callback(func, *args): return gpi_cb_hdl()
-"""请求在当前仿真时刻的只读阶段执行 实现await readonly"""
-def register_readonly_callback(func, *args): return gpi_cb_hdl()
-"""在读写同步阶段执行 允许在此阶段读写"""
-def register_rwsynch_callback(func, *args): return gpi_cb_hdl()
-
-"""重要 实现await risingedge fallingedge"""
-
-_value_change_callbacks = []
-
+"""
+首先 登记回调
+"""
 def register_value_change_callback(signal, func, edge, *args):
     """
     edge: 0 为 RISING, 1 为 FALLING, 2 为 BOTH
     """
     global _value_change_callbacks
-    
+    # 注册回调
     cb_hdl = gpi_cb_hdl()
-    # 将监听请求加入列表
+    # 加入回调函数队列
     _value_change_callbacks.append((signal, edge, func, args, cb_hdl))
     
     # 打印调试信息
@@ -383,10 +413,12 @@ def get_simulator_version() -> str: return "1.0"
 def is_running() -> bool: return True
 
 """获取设计的顶层句柄"""
+"""
 def get_root_handle(name: str | None) -> gpi_sim_hdl | None: 
     return gpi_sim_hdl(name if name else "top",
                         obj = name,
                         sim_engine=name)
+"""
 """遍历sv里面的package comopy暂无"""
 def package_iterate() -> gpi_iterator_hdl: return gpi_iterator_hdl()
 
@@ -396,7 +428,11 @@ def package_iterate() -> gpi_iterator_hdl: return gpi_iterator_hdl()
 
 """所有测试完成时调用 打印结束标志"""
 def stop_simulator(): 
+    global _event_loop, _current_time_ps
+    print("--- [ComoPy] Cleaning up after test... ---")
+    _event_loop.clear()
     print("--- [CoMoPy] Simulator Stopped ---")
+    
 
 """创建底层时钟对象"""
 def clock_create(hdl: gpi_sim_hdl): 
@@ -458,6 +494,71 @@ def patch_cocotb_simulator(comopy_sim_instance):
     global _comopy_engine
     _comopy_engine = comopy_sim_instance  # 这里的实例就是你的 ScheduledSimulator
     
+    def set_signal_val_int(handle, action, value):
+        # 这里的 handle 实际上就是 gpi_sim_hdl 的实例
+        handle.set_signal_val_int(action, value)
+
+    def get_signal_val_long(handle):
+        return handle.get_signal_val_long()
+    
+    def get_signal_val_binstr(handle):
+        return handle.get_signal_val_binstr()
+
+    # 2. 必须显式注入到你伪造的 sim 模块对象中
+    sim.set_signal_val_int = set_signal_val_int
+    sim.get_signal_val_long = get_signal_val_long
+    sim.get_signal_val_binstr = get_signal_val_binstr
+
+
+    import cocotb.handle
+    def immediate_write(handle, func, action, *args):
+    # handle: LogicArrayObject 实例
+    # func: 也就是你实现的 set_signal_val_int
+    # action: 写入动作类型 (Deposit/Force等)
+    # *args: 具体的数值 (value)
+    
+    # 绕过调度，直接调用函数执行！
+        func(action, *args)
+
+    #  核心注入：把 cocotb 内部用于排队的函数替换掉
+    cocotb.handle._schedule_write = immediate_write
+    # 保存原始的 _set_value 方法
+    """
+    original_set_value = cocotb.handle.LogicArrayObject._set_value
+    
+    def debug_set_value(self, value, action):
+        # 这里的 self 是 dut.a 这个对象
+        print(f"\n[DIAGNOSTIC] Setting {self._name}: value={value!r}, type={type(value)}")
+        print(f"[DIAGNOSTIC] len(self) reported as: {len(self)}")
+        
+        # 模拟进入源码逻辑的检查
+        if isinstance(value, int):
+            try:
+                # 这里对应你贴出的源码中的 _value_limits 检查
+                from cocotb.handle import _value_limits, _Limits
+                min_val, max_val = _value_limits(len(self), _Limits.VECTOR_NBIT)
+                print(f"[DIAGNOSTIC] Range check: {min_val} <= {value} <= {max_val}")
+                
+                if not (min_val <= value <= max_val):
+                    print(f"[DIAGNOSTIC] !!! RANGE CHECK FAILED")
+                    
+                if len(self) > 32:
+                    print(f"[DIAGNOSTIC] !!! len > 32, cocotb will switch to binstr mode instead of int mode")
+            except Exception as e:
+                print(f"[DIAGNOSTIC] Error during internal check: {e}")
+
+        # 调用原始逻辑，看看它到底走不走到驱动层
+        return original_set_value(self, value, action)
+
+    # 动态替换掉类的方法
+    cocotb.handle.LogicArrayObject._set_value = debug_set_value
+    """
+
+
+
+
+
+
     # 3. 绑定我们实现的 GPI 函数
     sim.get_precision = get_precision
     sim.get_sim_time = get_sim_time
@@ -517,7 +618,8 @@ def patch_cocotb_simulator(comopy_sim_instance):
     
     # python的handle层截断后续流程 高层次拦截
    
-    
+    """
+    方案二：从value属性开始 强制覆盖
     def forced_value_setter(self, value):
         # 修正：通过 self._handle 调用你定义的 GPI 接口函数
         if self._handle.get_definition_name() == "output port":
@@ -536,7 +638,7 @@ def patch_cocotb_simulator(comopy_sim_instance):
         # 调试输出
         sys.__stdout__.write(f"\n[CRITICAL HOOK] {self._path} SET TO {val_int}\n")
         sys.__stdout__.flush()
-
+    
     # 强行覆盖 LogicObject 和 LogicArrayObject 的 value 属性
     # 使用 setattr 动态替换 property，这是最稳妥的办法
     new_prop = property(fget=lambda self: self._handle.get_signal_val_long(), 
@@ -545,6 +647,7 @@ def patch_cocotb_simulator(comopy_sim_instance):
     cocotb.handle.LogicObject.value = new_prop
     if hasattr(cocotb.handle, "LogicArrayObject"):
         cocotb.handle.LogicArrayObject.value = new_prop
-
+    
+    """
     print("--- [CoMoPy] SYSTEM OVERRIDE SUCCESSFUL ---")
     return sim

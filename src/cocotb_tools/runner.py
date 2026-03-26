@@ -2103,7 +2103,7 @@ class Comopy(Runner):
 
     def build(self, 
               hdl_toplevel: str = "top",  # 类名，如 "Adder"
-              sources: list[str] = None, # 文件名，如 ["my_design.py"]
+              sources: list[str] = None, # 文件名，如 ["my_design"]
               **kwargs) -> None:
         
         if not sources:
@@ -2211,8 +2211,8 @@ def get_runner(simulator_name: str) -> Runner:
     """
     # 一共实现了10个仿真器的runner的映射
     # 分别是icarus、questa、ghdl、riviera、activehdl、verilator、xcelium、nvc、vcs和dsim
-    if(simulator_name == "comopy"):
-        import comopy_simulator
+    #if(simulator_name == "comopy"):
+        #import comopy_simulator
     supported_sims: dict[str, type[Runner]] = {
         "icarus": Icarus,
         "questa": Questa,

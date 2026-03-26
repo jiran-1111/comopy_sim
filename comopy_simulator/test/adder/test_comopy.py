@@ -6,15 +6,23 @@ import random
 
 # 加法器的基本测试
 @cocotb.test()
-async def test_2(dut):
+async def test_0(dut):
 
     A = 1
     B = 4
     dut.a.value = A
-    dut.b.value = B
+    await Timer(1, "ps")
+    #dut.b.value = B
+    dut.b._handle.set_signal_val_int(0, 4)
+    
+    dut._log.info(f"Internal data of A: {dut.a._handle.obj._data}")
+    dut._log.info(f"Internal data of B: {dut.b._handle.obj._data}")
+    
     await(Timer(10, "ns"))
     assert dut.q.value == A + B , "Security flaw: Output port was successfully overwritten!"
-    
+
+
+
 @cocotb.test()
 async def test_1(dut):
 
