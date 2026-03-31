@@ -38,6 +38,7 @@ class gpi_sim_hdl:
         self.hdl = self
         self._set_value = self.set_signal_val_int
         self._last_value = self.get_signal_val_long()
+        self._last_value = self.get_signal_val_long()
 
     def get_handle_by_name(self, name: str, discovery_method: int = 0) -> 'gpi_sim_hdl' | None:
         """找到信号对象 返回gpi_sim_hdl对象"""
@@ -63,8 +64,9 @@ class gpi_sim_hdl:
         # "LOGIC": 15, "LOGIC_ARRAY": 16
         return 16 if self.get_num_elems() > 1 else 15
 
+    """
     def set_signal_val_int(self, action: int, value: int) -> None: 
-        """支持整数写入"""
+    
         print(f"\n[HIT] GPI set_signal_val_int called for {self.name} with {value}\n")
 
         # 使用dut.a._handle.set_signal_val_int(0,2) 可以写入 现在双保险
@@ -87,7 +89,18 @@ class gpi_sim_hdl:
             sys.__stdout__.write(f"DEBUG: [CoMoPy Drive] {self.name} = {value}\n")
         except Exception as e:
             sys.__stdout__.write(f"DEBUG: [Drive Failed] {e}\n")
-    
+    """
+    def set_signal_val_int(self, action, value):
+        old_val = self.get_signal_val_long()
+        self.obj /= value # 修改硬件值
+        
+        if _comopy_engine:
+            _comopy_engine.evaluate() # 逻辑推导
+            
+        # 如果是时钟线变了，立即检查边沿触发器
+        if self.name == "clk" and old_val != value:
+            _check_value_change_callbacks()
+
     def set_signal_val_binstr(self, action: int, value: str) -> None:
         """支持二进制字符串"""
         # x z简单过滤换成0
@@ -273,10 +286,12 @@ def cleanup_test():
 
 import comopy.hdl as HDL
 _event_count = 0 
+
 # await Timer(10,"ns") 调用register_timed_callback(10000,callback) 目标时间，回调函数
 # risingedge 暂时没有改好
 # 每次tick完 调用_check_value_change_callbacks 检查是否有边沿触发的回调
-
+# derta time 
+"""
 def register_timed_callback(time_steps, callback, *args):
     global _current_time_ps, _is_processing, _comopy_engine
     global _event_count
@@ -321,7 +336,55 @@ def register_timed_callback(time_steps, callback, *args):
         finally:
             _is_processing = False
     return gpi_cb_hdl(event_packet)
+"""
+import itertools
+import heapq
 
+# 全局变量
+_event_loop = []
+_cnt = itertools.count() # 修复 NameError: name '_cnt' is not defined
+_is_processing = False
+_current_time_ps = 0
+def register_timed_callback(time_steps, callback, *args):
+    global _current_time_ps
+    target_time = _current_time_ps + time_steps
+    event_packet = [target_time, next(_cnt), callback, args, True]
+    heapq.heappush(_event_loop, event_packet)
+
+    # 关键：手动触发一次处理逻辑
+    _pump_events() 
+    return gpi_cb_hdl(event_packet)
+
+def _pump_events():
+    global _current_time_ps, _is_processing
+    # 如果已经在处理中，直接返回，让外层的 while 循环继续处理新加入的任务
+    if _is_processing: 
+        return
+    
+    _is_processing = True
+    try:
+        # 使用 while 循环，确保新注册的事件（如连续的 Timer）能被连续处理
+        while _event_loop:
+            # 检查堆顶事件
+            t, cnt, cb, a, active = heapq.heappop(_event_loop)
+            
+            # 推进仿真时间
+            _current_time_ps = t
+            
+            # 硬件逻辑演进（非常重要！）
+            if _comopy_engine:
+                # 如果有硬件引擎，执行评估
+                _comopy_engine.evaluate()
+                # 检查是否因为时间推进触发了边沿（比如时钟翻转）
+                _check_value_change_callbacks()
+
+            if active:
+                # 执行回调，这会回到 cocotb 协程
+                # 如果协程里又有 await Timer，它会往 _event_loop 里推新东西
+                cb(*a) 
+                
+    finally:
+        _is_processing = False
 # ——————————————回调注册——————————————————————
 """请求在delta step(逻辑重新评估一次后执行回调)"""
 def register_nextstep_callback(func, *args): return gpi_cb_hdl()
@@ -335,6 +398,7 @@ def register_rwsynch_callback(func, *args): return gpi_cb_hdl()
 # 所有等待信号变化的协程列表
 _value_change_callbacks = []
 # 检测边沿是否达到回调条件 如果should_trigger则触发回调
+"""
 def _check_value_change_callbacks():
     global _value_change_callbacks
     if not _value_change_callbacks:
@@ -382,6 +446,45 @@ def _check_value_change_callbacks():
     print(f"DEBUG: Calling Cocotb callback: {cb}, type: {type(cb)}")
     for cb, args in triggered:
         cb(*args)
+"""
+
+def _check_value_change_callbacks():
+    global _value_change_callbacks
+    if not _value_change_callbacks: return
+
+    remaining = []
+    # 建立一个快照，防止在循环中被修改
+    current_callbacks = list(_value_change_callbacks)
+    _value_change_callbacks = [] 
+
+    for item in current_callbacks:
+        signal, edge_type, cb, args, cb_hdl = item
+        if not cb_hdl.active: continue
+
+        new_val = signal.get_signal_val_long()
+        old_val = signal._last_value
+        
+        # 只有真正变化了才处理
+        if new_val != old_val:
+            is_rising = (old_val == 0 and new_val == 1)
+            is_falling = (old_val == 1 and new_val == 0)
+
+            should_trigger = False
+            if edge_type == 0: should_trigger = is_rising
+            elif edge_type == 1: should_trigger = is_falling
+            elif edge_type == 2: should_trigger = True # BOTH
+
+            if should_trigger:
+                # 记录日志，看看到底是谁触发的
+                sys.__stdout__.write(f"DEBUG: Triggered {edge_type} on {signal.name}: {old_val}->{new_val}\n")
+                cb(*args)
+                signal._last_value = new_val # 触发了才更新旧值
+                continue # 不再放回 remaining
+
+        remaining.extend([item])
+        signal._last_value = new_val # 没触发也得更新旧值，防止下次对比出错
+
+    _value_change_callbacks.extend(remaining)
 
 """
 首先 登记回调
