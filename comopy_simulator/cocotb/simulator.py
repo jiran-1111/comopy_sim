@@ -110,7 +110,7 @@ class gpi_sim_hdl:
     def set_signal_val_real(self, action: int, value: float) -> None:
         """支持浮点数写入，自动四舍五入"""
         val_int = int(round(value))
-        sys.__stdout__.write(f"DEBUG: [Real to Int] Converting {value} to {val_int}\n")
+        #sys.__stdout__.write(f"DEBUG: [Real to Int] Converting {value} to {val_int}\n")
         self.set_signal_val_int(action, val_int)
 
     def set_signal_val_str(self, action: int, value: bytes) -> None:
@@ -268,17 +268,10 @@ def get_sim_time() -> tuple[int, int]:
     return (t >> 32 & 0xFFFFFFFF, t & 0xFFFFFFFF)
 
 
-# 执行await timer
-# 建议放在全局作用域，确保 patch 之前已经定义好
-
-# 信号边沿检测器
 """
 遍历所有的注册的信号回调
 读取信号的当前值 对比存储的旧值
 """
-
-"""重要的时间推进函数"""     
-# 时间推进与时间循环 
 
 def cleanup_test():
     global _event_loop
@@ -288,55 +281,8 @@ import comopy.hdl as HDL
 _event_count = 0 
 
 # await Timer(10,"ns") 调用register_timed_callback(10000,callback) 目标时间，回调函数
-# risingedge 暂时没有改好
-# 每次tick完 调用_check_value_change_callbacks 检查是否有边沿触发的回调
-# derta time 
-"""
-def register_timed_callback(time_steps, callback, *args):
-    global _current_time_ps, _is_processing, _comopy_engine
-    global _event_count
-    _event_count += 1
-    # 1. 将新事件加入堆（注意：cocotb 可能会注册当前时间的事件）
-    target_time = _current_time_ps + time_steps
-    event_packet = [target_time, _event_count,callback, args, True]
-    heapq.heappush(_event_loop, event_packet) # 放入堆中
-    
-    # 2. 跑循环
-    if not _is_processing:
-        _is_processing = True
-        try:
-            while _event_loop:
-                if not is_running():
-                    break 
-                t,cnt, cb, a, active = heapq.heappop(_event_loop)
-                # 目标触发时间 计数器  回调函数 函数参数 有效性
-                time_diff = t - _current_time_ps # 当前时间与目标时间的差值time_diff
-                if _comopy_engine and time_diff > 0:
-                    # 硬件演进
-                    dut_obj = getattr(_comopy_engine, "_module", None)
-                    
-                    # 如果是module 则执行时钟步进
-                    if isinstance(dut_obj, HDL.Module):
-                        # 现仅支持步长为1000ps的时钟
-                        num_ticks = time_diff // 1000
-                        for _ in range(max(1, num_ticks)):
-                            _comopy_engine.tick()
-                            # 每 tick 一次，检查一次边沿回调
-                            _check_value_change_callbacks() 
-                    else:
-                        _comopy_engine.evaluate()
-                        _check_value_change_callbacks()
-                
-                _current_time_ps = t
-                if active:
-                    cb(*a) #执行回调
-                
-                print(f"[DEBUG] Advancing time by {time_diff}ps, current: {_current_time_ps}ps")
 
-        finally:
-            _is_processing = False
-    return gpi_cb_hdl(event_packet)
-"""
+
 import itertools
 import heapq
 
@@ -398,55 +344,6 @@ def register_rwsynch_callback(func, *args): return gpi_cb_hdl()
 # 所有等待信号变化的协程列表
 _value_change_callbacks = []
 # 检测边沿是否达到回调条件 如果should_trigger则触发回调
-"""
-def _check_value_change_callbacks():
-    global _value_change_callbacks
-    if not _value_change_callbacks:
-        return
-
-    triggered = [] # 触发队列 满足边沿条件的任务
-    remaining = [] # 保留队列 没等到目标边沿的任务
-
-    for item in _value_change_callbacks:
-        signal, edge_type, cb, args, cb_hdl = item
-        # 监控对象(dut.clk) 触发条件 回调函数 给回调的参数 有效性
-        if not cb_hdl.active: # 如果已经被取消了
-            continue
-        
-        # 新值和旧值比对
-        new_val = signal.get_signal_val_long()
-        old_val = signal._last_value
-        sys.__stdout__.write(f"DEBUG: Signal {signal.name} {old_val} -> {new_val}\n")
-
-
-        is_rising = (old_val == 0 and new_val == 1)
-        is_falling = (old_val == 1 and new_val == 0)
-        
-        # 判定是否满足边沿条件
-        should_trigger = False
-        if edge_type == 0: # RISING
-            should_trigger = is_rising
-        elif edge_type == 1: # FALLING
-            should_trigger = is_falling
-        elif edge_type == 2: # BOTH
-            should_trigger = is_rising or is_falling
-
-        if should_trigger:
-            triggered.append((cb, args))
-            # cocotb 的边沿触发通常是“一次性”的（One-shot），触发后即移除
-        else:
-            remaining.append(item)
-        
-        # 更新旧值
-        signal._last_value = new_val
-
-    _value_change_callbacks = remaining
-    
-    # 批量执行触发的回调
-    print(f"DEBUG: Calling Cocotb callback: {cb}, type: {type(cb)}")
-    for cb, args in triggered:
-        cb(*args)
-"""
 
 def _check_value_change_callbacks():
     global _value_change_callbacks
@@ -476,7 +373,7 @@ def _check_value_change_callbacks():
 
             if should_trigger:
                 # 记录日志，看看到底是谁触发的
-                sys.__stdout__.write(f"DEBUG: Triggered {edge_type} on {signal.name}: {old_val}->{new_val}\n")
+                #sys.__stdout__.write(f"DEBUG: Triggered {edge_type} on {signal.name}: {old_val}->{new_val}\n")
                 cb(*args)
                 signal._last_value = new_val # 触发了才更新旧值
                 continue # 不再放回 remaining
@@ -532,9 +429,9 @@ def package_iterate() -> gpi_iterator_hdl: return gpi_iterator_hdl()
 """所有测试完成时调用 打印结束标志"""
 def stop_simulator(): 
     global _event_loop, _current_time_ps
-    print("--- [ComoPy] Cleaning up after test... ---")
+    #print("--- [ComoPy] Cleaning up after test... ---")
     _event_loop.clear()
-    print("--- [CoMoPy] Simulator Stopped ---")
+    #print("--- [CoMoPy] Simulator Stopped ---")
     
 
 """创建底层时钟对象"""
@@ -564,12 +461,10 @@ def initialize_logger(
     
     cocotb_log.addHandler(file_handler)
     
-    print(f"--- [CoMoPy] Logging redirected to: {os.path.abspath(log_file)} ---")
+    #print(f"--- [CoMoPy] Logging redirected to: {os.path.abspath(log_file)} ---")
 
 """设置底层gpi日志详细程度"""
 def set_gpi_log_level(level: int) -> None: pass
-
-
 
 
 # === 注入核心函数 ===
@@ -614,53 +509,15 @@ def patch_cocotb_simulator(comopy_sim_instance):
 
 
     import cocotb.handle
+    # _schedule_write 是 cocotb.handle 模块里负责排队写操作的函数，改成直写
     def immediate_write(handle, func, action, *args):
     # handle: LogicArrayObject 实例
-    # func: 也就是你实现的 set_signal_val_int
+    # func: set_signal_val_int
     # action: 写入动作类型 (Deposit/Force等)
     # *args: 具体的数值 (value)
-    
-    # 绕过调度，直接调用函数执行！
         func(action, *args)
 
-    #  核心注入：把 cocotb 内部用于排队的函数替换掉
     cocotb.handle._schedule_write = immediate_write
-    # 保存原始的 _set_value 方法
-    """
-    original_set_value = cocotb.handle.LogicArrayObject._set_value
-    
-    def debug_set_value(self, value, action):
-        # 这里的 self 是 dut.a 这个对象
-        print(f"\n[DIAGNOSTIC] Setting {self._name}: value={value!r}, type={type(value)}")
-        print(f"[DIAGNOSTIC] len(self) reported as: {len(self)}")
-        
-        # 模拟进入源码逻辑的检查
-        if isinstance(value, int):
-            try:
-                # 这里对应你贴出的源码中的 _value_limits 检查
-                from cocotb.handle import _value_limits, _Limits
-                min_val, max_val = _value_limits(len(self), _Limits.VECTOR_NBIT)
-                print(f"[DIAGNOSTIC] Range check: {min_val} <= {value} <= {max_val}")
-                
-                if not (min_val <= value <= max_val):
-                    print(f"[DIAGNOSTIC] !!! RANGE CHECK FAILED")
-                    
-                if len(self) > 32:
-                    print(f"[DIAGNOSTIC] !!! len > 32, cocotb will switch to binstr mode instead of int mode")
-            except Exception as e:
-                print(f"[DIAGNOSTIC] Error during internal check: {e}")
-
-        # 调用原始逻辑，看看它到底走不走到驱动层
-        return original_set_value(self, value, action)
-
-    # 动态替换掉类的方法
-    cocotb.handle.LogicArrayObject._set_value = debug_set_value
-    """
-
-
-
-
-
 
     # 3. 绑定我们实现的 GPI 函数
     sim.get_precision = get_precision
@@ -719,38 +576,5 @@ def patch_cocotb_simulator(comopy_sim_instance):
     # 5. --- 属性拦截保持不变 ---
     import cocotb.handle
     
-    # python的handle层截断后续流程 高层次拦截
-   
-    """
-    方案二：从value属性开始 强制覆盖
-    def forced_value_setter(self, value):
-        # 修正：通过 self._handle 调用你定义的 GPI 接口函数
-        if self._handle.get_definition_name() == "output port":
-            error_msg = f"COCOTB_ERROR: Attempting to drive output port '{self._path}'! This is illegal in hardware."
-            # 抛出异常会直接中断当前的 cocotb.test
-            raise AttributeError(error_msg) 
-
-        val_int = int(value)
-        # 直接写硬件
-        self._handle.obj /= val_int
-        
-        # 立即评估逻辑
-        if self._handle.sim and hasattr(self._handle.sim, 'evaluate'):
-            self._handle.sim.evaluate()
-            
-        # 调试输出
-        sys.__stdout__.write(f"\n[CRITICAL HOOK] {self._path} SET TO {val_int}\n")
-        sys.__stdout__.flush()
-    
-    # 强行覆盖 LogicObject 和 LogicArrayObject 的 value 属性
-    # 使用 setattr 动态替换 property，这是最稳妥的办法
-    new_prop = property(fget=lambda self: self._handle.get_signal_val_long(), 
-                        fset=forced_value_setter)
-    
-    cocotb.handle.LogicObject.value = new_prop
-    if hasattr(cocotb.handle, "LogicArrayObject"):
-        cocotb.handle.LogicArrayObject.value = new_prop
-    
-    """
-    print("--- [CoMoPy] SYSTEM OVERRIDE SUCCESSFUL ---")
+    #print("--- [CoMoPy] SYSTEM OVERRIDE SUCCESSFUL ---")
     return sim

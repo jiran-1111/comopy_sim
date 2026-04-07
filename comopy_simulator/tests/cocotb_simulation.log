@@ -1,0 +1,17 @@
+INFO     cocotb               Running on CoMoPy version 1.0
+INFO     cocotb               Seeding Python random module with 1775545176
+INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
+DEBUG    cocotb.regression    Registered test 'test_module_add.test_add32_simple'
+INFO     cocotb               Running tests
+INFO     cocotb.regression    [34mrunning[49m[39m test_module_add.test_add32_simple (1/1)
+    测试 32 位加法器基本功能
+INFO     cocotb.regression    test_module_add.test_add32_simple [32mpassed[49m[39m
+INFO     cocotb.regression    *******************************************************************************************
+** TEST                               STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+*******************************************************************************************
+** test_module_add.test_add32_simple  [32m PASS [49m[39m          3.00           0.01        298.59  **
+*******************************************************************************************
+** TESTS=1 PASS=1 FAIL=0 SKIP=0                       3.00           0.01        260.02  **
+*******************************************************************************************
+
+INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---
