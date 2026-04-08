@@ -40,7 +40,10 @@ def main():
         ("Andgate", "test_andgate"),
         ("SimpleReg", "test_simplereg"),
         ("Module_shift8", "test_module_shift8"),
-        ("Module_add", "test_module_add")
+        ("Module_add", "test_module_add"),
+        ("Reduction", "test_reduction"),
+        ("Always_casez", "test_always_casez"),
+        ("Module_shift","test_module_shift")
 
     ]
 

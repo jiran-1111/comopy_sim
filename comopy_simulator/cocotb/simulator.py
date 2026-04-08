@@ -64,32 +64,6 @@ class gpi_sim_hdl:
         # "LOGIC": 15, "LOGIC_ARRAY": 16
         return 16 if self.get_num_elems() > 1 else 15
 
-    """
-    def set_signal_val_int(self, action: int, value: int) -> None: 
-    
-        print(f"\n[HIT] GPI set_signal_val_int called for {self.name} with {value}\n")
-
-        # 使用dut.a._handle.set_signal_val_int(0,2) 可以写入 现在双保险
-        # 底层模拟simulator
-        # 输出端口禁止写
-        print(f"DEBUG: Driving {self.name} with {value}, type is {self.get_definition_name()}")
-        if self.get_definition_name() == "output port":
-            # 底层也抛出异常
-            raise RuntimeError(f"GPI_ERROR: Cannot write to output signal {self.name}")
-        
-        try:
-            # 写硬件
-            self.obj /= value 
-            
-            # 逻辑评估 
-            if _comopy_engine:
-                # 每次输入改变，立即评估受影响的组合逻辑块
-                _comopy_engine.evaluate()
-                
-            sys.__stdout__.write(f"DEBUG: [CoMoPy Drive] {self.name} = {value}\n")
-        except Exception as e:
-            sys.__stdout__.write(f"DEBUG: [Drive Failed] {e}\n")
-    """
     def set_signal_val_int(self, action, value):
         old_val = self.get_signal_val_long()
         self.obj /= value # 修改硬件值
@@ -100,6 +74,7 @@ class gpi_sim_hdl:
         # 如果是时钟线变了，立即检查边沿触发器
         if self.name == "clk" and old_val != value:
             _check_value_change_callbacks()
+        #self.obj /= value # 修改硬件值
 
     def set_signal_val_binstr(self, action: int, value: str) -> None:
         """支持二进制字符串"""

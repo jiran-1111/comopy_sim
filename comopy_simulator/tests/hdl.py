@@ -1,40 +1,9 @@
 from comopy.hdl import *
 
-class my_dff8(Module):
-    @build
-    def build_all(s):
-        s.d = Input(8)
-        s.q = Output(8)
 
-    @seq
-    def update_ff(s):
-        s.q <<= s.d
+# _______ 组合逻辑__________
+# 1. 简单门电路：与门
 
-class Module_shift8(Module):
-    """https://hdlbits.01xz.net/wiki/Module_shift8"""
-
-    @build
-    def build_all(s):
-        s.d = Input(8)
-        s.sel = Input(2)
-        s.q = Output(8)
-        s.dff0 = my_dff8(s.d)
-        s.dff1 = my_dff8(s.dff0.q)
-        s.dff2 = my_dff8(s.dff1.q)
-
-    @comb
-    def update(s):
-        match s.sel:
-            case 0:
-                s.q /= s.d
-            case 1:
-                s.q /= s.dff0.q
-            case 2:
-                s.q /= s.dff1.q
-            case 3:
-                s.q /= s.dff2.q
-
-# 基础组合逻辑：与门
 class Andgate(RawModule):
     @build
     def ports(s):
@@ -43,9 +12,21 @@ class Andgate(RawModule):
         s.out = Output()
     @build
     def connect(s):
-        s.out @= s.a & s.b
+        s.out @= s.a & s.b 
 
-# Adder 1
+# 2. 算术组合逻辑：5位加法器
+class SimpleAdder(Module):
+    @build
+    def ports(s):
+        s.a = Input(5)
+        s.b = Input(5)
+        s.q = Output(5)
+
+    @comb
+    def update(s):
+        s.q /= s.a + s.b  # 使用 /= 在组合逻辑块中赋值
+
+# 3. 复杂算术逻辑：16位加法器 (带进位)
 
 class add16(RawModule):
     @build
@@ -56,43 +37,92 @@ class add16(RawModule):
         s.sum = Output(16)
         s.cout = Output()
         
-        # 1. 显式定义一个 17 位的临时逻辑信号（实实在在的 ID）
-        s.full_res = Logic(17)
-        
-        # 2. 把计算结果给它
+        s.full_res = Logic(17) # 内部逻辑信号
         s.full_res @= s.a.ext(17) + s.b.ext(17) + s.cin.ext(17)
         
-        # 3. 像切蛋糕一样切开赋值（避开 cat）
-        s.sum  @= s.full_res[:16] # 低 16 位是和
-        s.cout @= s.full_res[16]  # 最高位（第 17 位）是进位
-        
-class Module_add(RawModule):
-    """https://hdlbits.01xz.net/wiki/Module_add"""
+        s.sum  @= s.full_res[:16] # 截取低16位
+        s.cout @= s.full_res[16]  # 截取最高进位位
 
+# 4. 层次化组合逻辑：32位加法器
+class Module_add(RawModule):
     @build
     def build_all(s):
-        # 1. 定义顶级端口
         s.a = Input(32)
         s.b = Input(32)
         s.sum = Output(32)
 
-        # 2. 显式实例化两个加法器（不带参数）
-        s.lo = add16()
-        s.hi = add16()
+        s.lo = add16() # 例化低16位
+        s.hi = add16() # 例化高16位
 
-        # 3. 手动连接低位加法器 (lo)
-        s.lo.a   @= s.a[:16]
-        s.lo.b   @= s.b[:16]
-        s.lo.cin @= 0
+        # 级联连接
+        s.lo.a    @= s.a[:16]
+        s.lo.b    @= s.b[:16]
+        s.lo.cin  @= 0
         s.sum[:16] @= s.lo.sum
 
-        # 4. 手动连接高位加法器 (hi)
-        s.hi.a   @= s.a[16:]
-        s.hi.b   @= s.b[16:]
-        s.hi.cin @= s.lo.cout  # 这里的级联非常关键
+        s.hi.a    @= s.a[16:]
+        s.hi.b    @= s.b[16:]
+        s.hi.cin  @= s.lo.cout  # 进位传递
         s.sum[16:] @= s.hi.sum
 
-# 时序逻辑：简单寄存器
+
+
+class Reduction(RawModule):
+    """https://hdlbits.01xz.net/wiki/Reduction"""
+
+    @build
+    def build_all(s):
+        s.in_ = Input(8)
+        s.parity = Output()
+        s.parity @= s.in_.P
+
+
+
+class Always_casez(RawModule):
+    """https://hdlbits.01xz.net/wiki/Always_casez"""
+
+    @build
+    def build_all(s):
+        s.in_ = Input(8)
+        s.pos = Output(3)
+
+    @comb
+    def update(s):
+        match s.in_:
+            case "????_???1":
+                s.pos /= 0
+            case "????_??10":
+                s.pos /= 1
+            case "????_?100":
+                s.pos /= 2
+            case "????_1000":
+                s.pos /= 3
+            case "???1_0000":
+                s.pos /= 4
+            case "??10_0000":
+                s.pos /= 5
+            case "?100_0000":
+                s.pos /= 6
+            case "1000_0000":
+                s.pos /= 7
+            case _:
+                s.pos /= 0
+
+# _______ 时序逻辑__________
+# 1. 基础存储单元：8位D触发器
+
+class my_dff8(Module):
+    @build
+    def build_all(s):
+        s.d = Input(8)
+        s.q = Output(8)
+
+    @seq
+    def update_ff(s):
+        s.q <<= s.d  # 使用 <<= 表示非阻塞赋值/时序更新
+
+# 2. 基础存储单元：通用8位寄存器
+
 class SimpleReg(RawModule):
     @build
     def ports(s):
@@ -103,22 +133,9 @@ class SimpleReg(RawModule):
     def update(s, posedge="clk"):
         s.q <<= s.d
 
-class SimpleAdder(Module):
-  
-    @build
-    def ports(s):
-
-        s.a = Input(5)
-        s.b = Input(5)
-        s.q = Output(5)
-
-    @comb
-    def update(s):
-        s.q /= s.a + s.b
-
+# 3. 混合逻辑：带时序输出的加法器
 
 class Adder(RawModule):
-    
     @build
     def ports(s):
         s.clk = Input(1)
@@ -129,10 +146,54 @@ class Adder(RawModule):
 
     @comb
     def update(s):
-        s.q /= s.a + s.b
+        s.q /= s.a + s.b  # 组合部分
     
     @seq
-    def update_ff(s,posedge="clk"):
-        # 在 Module 中，@seq 默认监听内置的 s.clk
-        s.q_ff <<= s.a + s.b
+    def update_ff(s, posedge="clk"):
+        s.q_ff <<= s.a + s.b # 时序部分，结果在下一拍有效
 
+# 4. 复杂时序系统：8位移位选择模块
+
+class Module_shift8(Module):
+    @build
+    def build_all(s):
+        s.d = Input(8)
+        s.sel = Input(2)
+        s.q = Output(8)
+        # 串行级联的触发器组
+        s.dff0 = my_dff8(s.d)
+        s.dff1 = my_dff8(s.dff0.q)
+        s.dff2 = my_dff8(s.dff1.q)
+
+    @comb
+    def update(s):
+        # 组合逻辑选择器：根据 sel 选择不同节拍的输出
+        match s.sel:
+            case 0: s.q /= s.d
+            case 1: s.q /= s.dff0.q
+            case 2: s.q /= s.dff1.q
+            case 3: s.q /= s.dff2.q
+
+class my_dff(RawModule):  # passthrough only for testing
+    @build
+    def build_all(s):
+        s.clk = Input()
+        s.d = Input()
+        s.q = Output()
+        s.q @= s.d
+
+
+class Module_shift(RawModule):
+    """https://hdlbits.01xz.net/wiki/Module_shift"""
+
+    @build
+    def build_all(s):
+        s.clk = Input()
+        s.d = Input()
+        s.q = Output()
+        s.a = Logic()
+        s.b = Logic()
+        s.dff0 = my_dff(s.clk, s.d, s.a)
+        s.dff1 = my_dff(s.clk, s.a, s.b)
+        s.dff2 = my_dff(s.clk, s.b, s.q)
+        
