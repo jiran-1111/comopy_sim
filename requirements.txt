@@ -1,0 +1,22 @@
+circt==1.125.0
+-e git+https://github.com/jiran-1111/comopy_sim.git@0d4d5f3532996ec69b1f589adbc61538566fa462#egg=cocotb
+cocotb-bus==0.3.0
+cocotb-coverage==2.0
+-e git+https://github.com/jiran-1111/comopy.git@a4a1b7d34621ca25dcea1fe8e6636f3f3c409c90#egg=comopy
+coverage==7.13.1
+find_libpython==0.5.0
+iniconfig==2.3.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+packaging==25.0
+pluggy==1.6.0
+pybind11==3.0.1
+Pygments==2.19.2
+pytest==9.0.2
+pytest-cov==7.0.0
+python-constraint==1.4.0
+PyYAML==6.0.3
+scapy==2.7.0
+setuptools==80.9.0
+types-setuptools==80.9.0.20251223
+wheel==0.45.1
