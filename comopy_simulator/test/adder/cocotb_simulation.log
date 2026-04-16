@@ -1,5 +1,5 @@
 INFO     cocotb               Running on CoMoPy version 1.0
-INFO     cocotb               Seeding Python random module with 1774941785
+INFO     cocotb               Seeding Python random module with 1776334358
 INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
 DEBUG    cocotb.regression    Registered test 'test_comopy.test_0'
 DEBUG    cocotb.regression    Registered test 'test_comopy.test_1'
@@ -29,12 +29,12 @@ INFO     cocotb.regression    test_comopy.adder_randomised_test [32mpassed[49m
 INFO     cocotb.regression    *******************************************************************************************
 ** TEST                               STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
 *******************************************************************************************
-** test_comopy.test_0                 [32m PASS [49m[39m         10.00           0.00       4898.09  **
-** test_comopy.test_1                 [32m PASS [49m[39m          5.00           0.00      20600.71  **
-** test_comopy.adder_basic_test       [32m PASS [49m[39m          2.00           0.00       9950.90  **
-** test_comopy.adder_randomised_test  [32m PASS [49m[39m       4000.00           0.31      13074.84  **
+** test_comopy.test_0                 [32m PASS [49m[39m         10.00           0.00       4328.47  **
+** test_comopy.test_1                 [32m PASS [49m[39m          5.00           0.00      16008.79  **
+** test_comopy.adder_basic_test       [32m PASS [49m[39m          2.00           0.00       7921.25  **
+** test_comopy.adder_randomised_test  [32m PASS [49m[39m       4000.00           0.31      12881.23  **
 *******************************************************************************************
-** TESTS=4 PASS=4 FAIL=0 SKIP=0                    4017.00           0.31      12905.57  **
+** TESTS=4 PASS=4 FAIL=0 SKIP=0                    4017.00           0.32      12686.42  **
 *******************************************************************************************
 
 INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

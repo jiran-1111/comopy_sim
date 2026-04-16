@@ -1,28 +1,22 @@
 INFO     cocotb               Running on CoMoPy version 1.0
-INFO     cocotb               Seeding Python random module with 1775720754
+INFO     cocotb               Seeding Python random module with 1776335134
 INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
 DEBUG    cocotb.regression    Registered test 'test_module_shift.test_shift_pipeline'
 INFO     cocotb               Running tests
 INFO     cocotb.regression    [34mrunning[49m[39m test_module_shift.test_shift_pipeline (1/1)
-    测试移位寄存器：验证数据在流水线中的逐拍传递
-WARNING  cocotb.task.Test test_shift_pipeline Data should be at stage A
-assert Logic('0') == 1
- +  where Logic('0') = LogicObject(Module_shift.a with definition wire (at hdl_design.py)).value
- +    where LogicObject(Module_shift.a with definition wire (at hdl_design.py)) = HierarchyObject(Module_shift with definition module (at hdl_design.py)).a
-Traceback (most recent call last):
-  File "/home/ranrr/cocotb/comopy_simulator/tests/cocotb_test/test_module_shift.py", line 17, in test_shift_pipeline
-    assert dut.a.value == 1, "Data should be at stage A"
-AssertionError: Data should be at stage A
-assert Logic('0') == 1
- +  where Logic('0') = LogicObject(Module_shift.a with definition wire (at hdl_design.py)).value
- +    where LogicObject(Module_shift.a with definition wire (at hdl_design.py)) = HierarchyObject(Module_shift with definition module (at hdl_design.py)).a
-WARNING  cocotb.regression    [49m[39mtest_module_shift.test_shift_pipeline [31mfailed[49m[39m
+    测试移位寄存器并验证每一拍的阶段覆盖
+INFO     cocotb.Module_shift  ==============================
+INFO     cocotb.Module_shift  Stage_A   : Empty
+INFO     cocotb.Module_shift  Stage_B   : Empty
+INFO     cocotb.Module_shift  Final_Q   : Empty
+INFO     cocotb.Module_shift  ==============================
+INFO     cocotb.regression    test_module_shift.test_shift_pipeline [32mpassed[49m[39m
 INFO     cocotb.regression    ***********************************************************************************************
 ** TEST                                   STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
 ***********************************************************************************************
-** test_module_shift.test_shift_pipeline  [31m FAIL [49m[39m          6.00           0.01        880.97  **
+** test_module_shift.test_shift_pipeline  [32m PASS [49m[39m         22.00           0.01       3581.26  **
 ***********************************************************************************************
-** TESTS=1 PASS=0 FAIL=1 SKIP=0                           6.00           0.02        332.88  **
+** TESTS=1 PASS=1 FAIL=0 SKIP=0                          22.00           0.01       3070.09  **
 ***********************************************************************************************
 
 INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---
