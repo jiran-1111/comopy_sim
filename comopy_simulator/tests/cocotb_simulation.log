@@ -1,5 +1,5 @@
 INFO     cocotb               Running on CoMoPy version 1.0
-INFO     cocotb               Seeding Python random module with 1776335134
+INFO     cocotb               Seeding Python random module with 1776924794
 INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
 DEBUG    cocotb.regression    Registered test 'test_module_shift.test_shift_pipeline'
 INFO     cocotb               Running tests
@@ -14,9 +14,9 @@ INFO     cocotb.regression    test_module_shift.test_shift_pipeline [32mpassed
 INFO     cocotb.regression    ***********************************************************************************************
 ** TEST                                   STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
 ***********************************************************************************************
-** test_module_shift.test_shift_pipeline  [32m PASS [49m[39m         22.00           0.01       3581.26  **
+** test_module_shift.test_shift_pipeline  [32m PASS [49m[39m         22.00           0.01       3278.66  **
 ***********************************************************************************************
-** TESTS=1 PASS=1 FAIL=0 SKIP=0                          22.00           0.01       3070.09  **
+** TESTS=1 PASS=1 FAIL=0 SKIP=0                          22.00           0.01       2795.44  **
 ***********************************************************************************************
 
 INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

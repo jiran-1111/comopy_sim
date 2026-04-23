@@ -1,40 +1,16 @@
 INFO     cocotb               Running on CoMoPy version 1.0
-INFO     cocotb               Seeding Python random module with 1776334358
+INFO     cocotb               Seeding Python random module with 1776935221
 INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
-DEBUG    cocotb.regression    Registered test 'test_comopy.test_0'
-DEBUG    cocotb.regression    Registered test 'test_comopy.test_1'
-DEBUG    cocotb.regression    Registered test 'test_comopy.adder_basic_test'
-DEBUG    cocotb.regression    Registered test 'test_comopy.adder_randomised_test'
+DEBUG    cocotb.regression    Registered test 'new_test.adder_read_write_test'
 INFO     cocotb               Running tests
-INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.test_0 (1/4)
-INFO     cocotb.SimpleDut     Internal data of A: 01
-INFO     cocotb.SimpleDut     Internal data of B: 04
-INFO     cocotb.regression    test_comopy.test_0 [32mpassed[49m[39m
-INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.test_1 (2/4)
-INFO     cocotb.regression    test_comopy.test_1 [32mpassed[49m[39m
-INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.adder_basic_test (3/4)
-INFO     cocotb.regression    test_comopy.adder_basic_test [32mpassed[49m[39m
-INFO     cocotb.regression    [34mrunning[49m[39m test_comopy.adder_randomised_test (4/4)
-    自主实现覆盖率统计的随机测试
-INFO     cocotb.SimpleDut     Starting randomised test with custom monitor...
-INFO     cocotb.SimpleDut     ==================================================
-INFO     cocotb.SimpleDut           COMOPY NATIVE COVERAGE REPORT
-INFO     cocotb.SimpleDut     ==================================================
-INFO     cocotb.SimpleDut     -> Input A   : 16/16 bins (100.00%)
-INFO     cocotb.SimpleDut     -> Input B   : 16/16 bins (100.00%)
-INFO     cocotb.SimpleDut     -> Cross A&B : 256/256 bins (100.00%)
-INFO     cocotb.SimpleDut     ==================================================
-INFO     cocotb.SimpleDut     Simulation Finished Successfully!
-INFO     cocotb.regression    test_comopy.adder_randomised_test [32mpassed[49m[39m
-INFO     cocotb.regression    *******************************************************************************************
-** TEST                               STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
-*******************************************************************************************
-** test_comopy.test_0                 [32m PASS [49m[39m         10.00           0.00       4328.47  **
-** test_comopy.test_1                 [32m PASS [49m[39m          5.00           0.00      16008.79  **
-** test_comopy.adder_basic_test       [32m PASS [49m[39m          2.00           0.00       7921.25  **
-** test_comopy.adder_randomised_test  [32m PASS [49m[39m       4000.00           0.31      12881.23  **
-*******************************************************************************************
-** TESTS=4 PASS=4 FAIL=0 SKIP=0                    4017.00           0.32      12686.42  **
-*******************************************************************************************
+INFO     cocotb.regression    [34mrunning[49m[39m new_test.adder_read_write_test (1/1)
+INFO     cocotb.regression    new_test.adder_read_write_test [32mpassed[49m[39m
+INFO     cocotb.regression    ****************************************************************************************
+** TEST                            STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+****************************************************************************************
+** new_test.adder_read_write_test  [32m PASS [49m[39m         20.00           0.00       4157.72  **
+****************************************************************************************
+** TESTS=1 PASS=1 FAIL=0 SKIP=0                   20.00           0.01       3112.66  **
+****************************************************************************************
 
 INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

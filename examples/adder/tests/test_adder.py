@@ -16,10 +16,66 @@ from cocotb_tools.runner import get_runner
 if cocotb.simulator.is_running():
     from adder_model import adder_model
 
+import cocotb
+from cocotb.clock import Clock  # 导入时钟驱动工具
+from cocotb.triggers import RisingEdge,FallingEdge, Timer
+import sys
+import random
+
+@cocotb.test()
+async def adder_read_write__test(dut):
+
+ 
+    await Timer(10, "ns")
+    await Timer(15, "ns")
+    await Timer(5, "ns")
+       
+
+@cocotb.test()
+async def adder_await_test(dut):
+
+    for _ in range(10):
+        # 随机抽取0~15的整数
+        A = random.randint(0, 15)
+        B = random.randint(0, 15)
+
+        dut.a.value = A
+        dut.b.value = B
+        
+        await Timer(2, unit="ns")
+    
+        # 输出和python的正确模型相匹配        
+        assert dut.q.value == A + B, (
+            f"Randomised test failed with: {dut.a.value} + {dut.b.value} = {dut.q.value}"
+        )
+
+@cocotb.test()
+async def adder_edge_test(dut):
+    clock = Clock(dut.clk, 10, unit="ns") 
+    cocotb.start_soon(clock.start())
+    
+    for _ in range(10):
+        # 随机抽取0~15的整数
+        A = random.randint(0, 15)
+        B = random.randint(0, 15)
+
+        dut.a.value = A
+        dut.b.value = B
+        await RisingEdge(dut.clk)
+        #await Timer(1, "ns")
+        await Timer(1, "ns")
+        await FallingEdge(dut.clk)
+        await Timer(2, "ns")
+    
+        # 输出和python的正确模型相匹配        
+        assert dut.q.value == A + B, (
+            f"Randomised test failed with: {dut.a.value} + {dut.b.value} = {dut.q.value}"
+        )
+"""   
 # 加法器的基本测试
 @cocotb.test()
 async def adder_basic_test(dut):
-    """Test for 5 + 10"""
+   
 
     A = 5
     B = 10
@@ -37,8 +93,7 @@ async def adder_basic_test(dut):
 # 随机测试
 @cocotb.test()
 async def adder_randomised_test(dut):
-    """Test for adding 2 random numbers multiple times"""
-
+   
     for _ in range(10):
         # 随机抽取0~15的整数
         A = random.randint(0, 15)
@@ -53,7 +108,7 @@ async def adder_randomised_test(dut):
         assert dut.X.value == adder_model(A, B), (
             f"Randomised test failed with: {dut.A.value} + {dut.B.value} = {dut.X.value}"
         )
-
+"""
 # pytest入口 启动仿真
 def test_adder_runner():
     """Simulate the adder example using the Python runner.
@@ -69,9 +124,8 @@ def test_adder_runner():
     sys.path.append(str(proj_path / "model"))
 
     if hdl_toplevel_lang == "verilog":
-        sources = [proj_path / "hdl" / "adder.sv"] #待编译的源文件
-    else:
-        sources = [proj_path / "hdl" / "adder.vhdl"]
+        sources = [proj_path / "hdl" / "new_adder.sv"] #待编译的源文件
+
 
     build_test_args = []
     if hdl_toplevel_lang == "vhdl" and sim == "xcelium":

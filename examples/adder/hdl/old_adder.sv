@@ -6,11 +6,11 @@
 module adder #(
   parameter integer DATA_WIDTH = 4
 ) (
-  input  logic unsigned [DATA_WIDTH-1:0] A,
-  input  logic unsigned [DATA_WIDTH-1:0] B,
-  output logic unsigned [DATA_WIDTH:0]   X
+  input  logic unsigned [DATA_WIDTH-1:0] a,
+  input  logic unsigned [DATA_WIDTH-1:0] b,
+  output logic unsigned [DATA_WIDTH:0]   q
 );
 
-  assign X = A + B;
+  assign q = a + b;
 
 endmodule

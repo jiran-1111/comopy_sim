@@ -33,7 +33,7 @@ def main():
     """
     runner.test(
         hdl_toplevel="SimpleDut",      # 对应 GPI 根节点名字
-        test_module="test_comopy"    # 对应 test_comopy.py 文件名
+        test_module="new_test"    # 对应 test_comopy.py 文件名
     )
 
 if __name__ == "__main__":

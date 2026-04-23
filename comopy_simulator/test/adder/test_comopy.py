@@ -6,6 +6,7 @@ import sys
 import random
 
 # 加法器的基本测试
+
 @cocotb.test()
 async def test_0(dut):
 
@@ -66,21 +67,43 @@ async def adder_randomised_test(dut):
         dut.a.value = A
         dut.b.value = B
 
-        await Timer(2, unit="ns")
-
+    
         # 输出和python的正确模型相匹配        
         assert dut.q.value == A + B, (
             f"Randomised test failed with: {dut.a.value} + {dut.b.value} = {dut.q.value}"
         )
 
 
+@cocotb.test()
+async def adder_edge_test(dut):
+
+    
+    for _ in range(10):
+        # 随机抽取0~15的整数
+        A = random.randint(0, 15)
+        B = random.randint(0, 15)
+
+        dut.a.value = A
+        dut.b.value = B
+        await RisingEdge(dut.clk)
+        await Timer(1, "ns")
+        await RisingEdge(dut.clk)
+        await Timer(1, "ns")
+    
+        # 输出和python的正确模型相匹配        
+        assert dut.q.value == A + B, (
+            f"Randomised test failed with: {dut.a.value} + {dut.b.value} = {dut.q.value}"
+        )
+    
+
+"""
 import cocotb
 from cocotb.triggers import Timer
 import random
 
 @cocotb.test()
 async def adder_randomised_test(dut):
-    """自主实现覆盖率统计的随机测试"""
+   
     
     # --- 1. 初始化统计字典 (Bins) ---
     # 模拟 a, b 的 0-15 范围
@@ -125,3 +148,4 @@ async def adder_randomised_test(dut):
     
     dut._log.info("="*50)
     dut._log.info("Simulation Finished Successfully!")
+    """
