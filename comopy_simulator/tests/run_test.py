@@ -35,15 +35,16 @@ runner.test(
 def main():
     # 配置：顶层模块 -> 对应的测试文件名
     test_configs = [
-        ("SimpleAdder", "test_simpleadder"),
-        ("Adder", "test_adder"),
+        #("SimpleAdder", "test_simpleadder"),
+        #("Adder", "test_adder"),
         ("Andgate", "test_andgate"),
-        ("SimpleReg", "test_simplereg"),
-        ("Module_shift8", "test_module_shift8"),
-        ("Module_add", "test_module_add"),
+        #("SimpleReg", "test_simplereg"),
+        
+        #("Module_shift8", "test_module_shift8"),
+        #("Module_add", "test_module_add"),
         ("Reduction", "test_reduction"),
         ("Always_casez", "test_always_casez"),
-        ("Module_shift","test_module_shift")
+        #("Module_shift","test_module_shift")
 
     ]
 

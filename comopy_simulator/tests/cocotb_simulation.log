@@ -1,22 +1,19 @@
 INFO     cocotb               Running on CoMoPy version 1.0
-INFO     cocotb               Seeding Python random module with 1776924794
+INFO     cocotb               Seeding Python random module with 1777016603
 INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
-DEBUG    cocotb.regression    Registered test 'test_module_shift.test_shift_pipeline'
+DEBUG    cocotb.regression    Registered test 'test_always_casez.test_priority_encoder'
 INFO     cocotb               Running tests
-INFO     cocotb.regression    [34mrunning[49m[39m test_module_shift.test_shift_pipeline (1/1)
-    测试移位寄存器并验证每一拍的阶段覆盖
-INFO     cocotb.Module_shift  ==============================
-INFO     cocotb.Module_shift  Stage_A   : Empty
-INFO     cocotb.Module_shift  Stage_B   : Empty
-INFO     cocotb.Module_shift  Final_Q   : Empty
-INFO     cocotb.Module_shift  ==============================
-INFO     cocotb.regression    test_module_shift.test_shift_pipeline [32mpassed[49m[39m
-INFO     cocotb.regression    ***********************************************************************************************
-** TEST                                   STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
-***********************************************************************************************
-** test_module_shift.test_shift_pipeline  [32m PASS [49m[39m         22.00           0.01       3278.66  **
-***********************************************************************************************
-** TESTS=1 PASS=1 FAIL=0 SKIP=0                          22.00           0.01       2795.44  **
-***********************************************************************************************
+INFO     cocotb.regression    [34mrunning[49m[39m test_always_casez.test_priority_encoder (1/1)
+INFO     cocotb.Always_casez  encoder : <cocotb_coverage.coverage.CoverItem object at 0x7ff91e9bfcb0>, coverage=10, size=10 
+INFO     cocotb.Always_casez     encoder.all_zero : <cocotb_coverage.coverage.CoverPoint object at 0x7ff91e83e990>, coverage=2, size=2 
+INFO     cocotb.Always_casez     encoder.output_pos : <cocotb_coverage.coverage.CoverPoint object at 0x7ff91e9bf770>, coverage=8, size=8 
+INFO     cocotb.regression    test_always_casez.test_priority_encoder [32mpassed[49m[39m
+INFO     cocotb.regression    *************************************************************************************************
+** TEST                                     STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+*************************************************************************************************
+** test_always_casez.test_priority_encoder  [32m PASS [49m[39m          9.00           0.01        937.79  **
+*************************************************************************************************
+** TESTS=1 PASS=1 FAIL=0 SKIP=0                             9.00           0.01        798.43  **
+*************************************************************************************************
 
 INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---
