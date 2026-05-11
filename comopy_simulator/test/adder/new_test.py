@@ -11,7 +11,7 @@ async def adder_await__test(dut):
     await Timer(5, "ns")
 
 
-"""
+
 @cocotb.test()
 async def adder_read_write_test(dut):
   
@@ -51,4 +51,4 @@ async def adder_edge_test(dut):
         assert dut.q.value == A + B, (
             f"Randomised test failed with: {dut.a.value} + {dut.b.value} = {dut.q.value}"
         )
-"""
+

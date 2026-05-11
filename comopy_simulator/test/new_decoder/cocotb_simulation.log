@@ -1,0 +1,24 @@
+INFO     cocotb               Running on CoMoPy version 1.0
+INFO     cocotb               Seeding Python random module with 1778485240
+INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
+DEBUG    cocotb.regression    Registered test 'run_test.decoder_await_test'
+DEBUG    cocotb.regression    Registered test 'run_test.decoder_read_write_test'
+DEBUG    cocotb.regression    Registered test 'run_test.decoder_edge_test'
+INFO     cocotb               Running tests
+INFO     cocotb.regression    [34mrunning[49m[39m run_test.decoder_await_test (1/3)
+INFO     cocotb.regression    run_test.decoder_await_test [32mpassed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m run_test.decoder_read_write_test (2/3)
+INFO     cocotb.regression    run_test.decoder_read_write_test [32mpassed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m run_test.decoder_edge_test (3/3)
+INFO     cocotb.regression    run_test.decoder_edge_test [32mpassed[49m[39m
+INFO     cocotb.regression    ******************************************************************************************
+** TEST                              STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+******************************************************************************************
+** run_test.decoder_await_test       [32m PASS [49m[39m         30.00           0.00      12577.88  **
+** run_test.decoder_read_write_test  [32m PASS [49m[39m         20.00           0.01       2998.93  **
+** run_test.decoder_edge_test        [32m PASS [49m[39m         97.00           0.02       4982.46  **
+******************************************************************************************
+** TESTS=3 PASS=3 FAIL=0 SKIP=0                    147.00           0.03       4643.10  **
+******************************************************************************************
+
+INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

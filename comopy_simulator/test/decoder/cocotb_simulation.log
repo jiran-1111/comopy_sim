@@ -1,0 +1,22 @@
+INFO     cocotb               Running on CoMoPy version 1.0
+INFO     cocotb               Seeding Python random module with 1778321767
+INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
+DEBUG    cocotb.regression    Registered test 'test_decoder.test_decoder_simple'
+DEBUG    cocotb.regression    Registered test 'test_decoder.test_random_instr'
+INFO     cocotb               Running tests
+INFO     cocotb.regression    [34mrunning[49m[39m test_decoder.test_decoder_simple (1/2)
+    验证 R-type 指令译码
+INFO     cocotb.regression    test_decoder.test_decoder_simple [32mpassed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m test_decoder.test_random_instr (2/2)
+    随机压力测试
+INFO     cocotb.regression    test_decoder.test_random_instr [32mpassed[49m[39m
+INFO     cocotb.regression    ******************************************************************************************
+** TEST                              STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+******************************************************************************************
+** test_decoder.test_decoder_simple  [32m PASS [49m[39m          2.00           0.00        812.30  **
+** test_decoder.test_random_instr    [32m PASS [49m[39m         20.00           0.01       3864.65  **
+******************************************************************************************
+** TESTS=2 PASS=2 FAIL=0 SKIP=0                     22.00           0.01       2274.84  **
+******************************************************************************************
+
+INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---
