@@ -1,0 +1,114 @@
+INFO     cocotb               Running on CoMoPy version 1.0
+INFO     cocotb               Seeding Python random module with 1778488604
+INFO     cocotb               Initialized cocotb v2.1.0.dev0+64bdefaf from /home/ranrr/cocotb/src/cocotb
+DEBUG    cocotb.regression    Registered test 'test_inst_mem.t_reset_async'
+DEBUG    cocotb.regression    Registered test 'test_inst_mem.t_request_single'
+INFO     cocotb               Running tests
+INFO     cocotb.regression    [34mrunning[49m[39m test_inst_mem.t_reset_async (1/2)
+WARNING  cocotb.task.Test t_reset_async InstMemSync contains no child object named req
+Traceback (most recent call last):
+  File "/home/ranrr/cocotb/comopy_simulator/test/new_inst_mem/test_inst_mem.py", line 16, in t_reset_async
+    dut.req.value = 1
+    ^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/handle.py", line 480, in __getattr__
+    raise AttributeError(f"{self._path} contains no child object named {name}")
+AttributeError: InstMemSync contains no child object named req
+WARNING  cocotb.regression    [49m[39mtest_inst_mem.t_reset_async [31mfailed[49m[39m
+INFO     cocotb.regression    [34mrunning[49m[39m test_inst_mem.t_request_single (2/2)
+WARNING  cocotb.task.Test t_request_single InstMemSync contains no child object named req
+Traceback (most recent call last):
+  File "/home/ranrr/cocotb/comopy_simulator/test/new_inst_mem/test_inst_mem.py", line 16, in t_reset_async
+    dut.req.value = 1
+    ^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/handle.py", line 480, in __getattr__
+    raise AttributeError(f"{self._path} contains no child object named {name}")
+AttributeError: InstMemSync contains no child object named req
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ranrr/cocotb/comopy_simulator/test/new_inst_mem/test_inst_mem.py", line 25, in t_request_single
+    await reset_dut(dut)
+  File "/home/ranrr/cocotb/comopy_simulator/test/new_inst_mem/test_inst_mem.py", line 8, in reset_dut
+    dut.req.value = 0
+    ^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/handle.py", line 480, in __getattr__
+    raise AttributeError(f"{self._path} contains no child object named {name}")
+AttributeError: InstMemSync contains no child object named req
+WARNING  cocotb.task.Task 2   Can't _cancel_now() currently running Task
+Traceback (most recent call last):
+  File "/home/ranrr/cocotb/comopy_simulator/test/new_inst_mem/test_inst_mem.py", line 16, in t_reset_async
+    dut.req.value = 1
+    ^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/handle.py", line 480, in __getattr__
+    raise AttributeError(f"{self._path} contains no child object named {name}")
+AttributeError: InstMemSync contains no child object named req
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ranrr/cocotb/comopy_simulator/test/new_inst_mem/test_inst_mem.py", line 25, in t_request_single
+    await reset_dut(dut)
+  File "/home/ranrr/cocotb/comopy_simulator/test/new_inst_mem/test_inst_mem.py", line 8, in reset_dut
+    dut.req.value = 0
+    ^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/handle.py", line 480, in __getattr__
+    raise AttributeError(f"{self._path} contains no child object named {name}")
+AttributeError: InstMemSync contains no child object named req
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ranrr/cocotb/src/cocotb/clock.py", line 340, in drive
+    self._signal.set(self._set_action(1))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/handle.py", line 1182, in set
+    super().set(value)
+    ~~~~~~~~~~~^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/handle.py", line 894, in set
+    self._set_value(value.value, _GPISetAction.DEPOSIT)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/handle.py", line 1155, in _set_value
+    _schedule_write(self, self._handle.set_signal_val_binstr, action, value_)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ranrr/cocotb/comopy_simulator/cocotb/simulator.py", line 493, in immediate_write
+    func(action, *args)
+    ~~~~^^^^^^^^^^^^^^^
+  File "/home/ranrr/cocotb/comopy_simulator/cocotb/simulator.py", line 83, in set_signal_val_binstr
+    self.set_signal_val_int(0, int(safe_value, 2))
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ranrr/cocotb/comopy_simulator/cocotb/simulator.py", line 76, in set_signal_val_int
+    _check_value_change_callbacks()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/ranrr/cocotb/comopy_simulator/cocotb/simulator.py", line 352, in _check_value_change_callbacks
+    cb(*args)
+    ~~^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/_gpi_triggers.py", line 49, in _react
+    cocotb._event_loop._inst.run()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/ranrr/cocotb/src/cocotb/_event_loop.py", line 53, in run
+    cb._run()
+    ~~~~~~~^^
+  File "/home/ranrr/cocotb/src/cocotb/_event_loop.py", line 26, in _run
+    self._func()
+    ~~~~~~~~~~^^
+  File "/home/ranrr/cocotb/src/cocotb/task.py", line 337, in _resume
+    self._set_outcome(
+    ~~~~~~~~~~~~~~~~~^
+        remove_traceback_frames(e, ["_resume"]), _TaskState.ERRORED
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/ranrr/cocotb/src/cocotb/task.py", line 257, in _set_outcome
+    callback(self)
+    ~~~~~~~~^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/_test.py", line 66, in _test_done_callback
+    self.abort(Error(e))
+    ~~~~~~~~~~^^^^^^^^^^
+  File "/home/ranrr/cocotb/src/cocotb/_test.py", line 99, in abort
+    task._cancel_now()
+    ~~~~~~~~~~~~~~~~^^
+  File "/home/ranrr/cocotb/src/cocotb/task.py", line 527, in _cancel_now
+    raise RuntimeError("Can't _cancel_now() currently running Task")
+RuntimeError: Can't _cancel_now() currently running Task
+INFO     cocotb.runner.comopy --- [ComoPy] Simulation Finished ---

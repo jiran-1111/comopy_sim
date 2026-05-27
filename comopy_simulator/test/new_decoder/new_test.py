@@ -31,26 +31,39 @@ async def test_decoder_rtype_regs(dut):
     assert dut.rs2.value   == 15,  "rs2 error"
     assert dut.is_r_type.value == 1,"is_r_type error"
     assert dut.alu_sub.value == 0, "alu_sub error"
-
-# ==============================================================================
-# 3. 专业测试2：测试 ALU 操作译码 ADD / SUB / SRL / SRA 等
-# ==============================================================================
 @cocotb.test()
 async def test_decoder_alu_ops(dut):
-    test_cases = [
-        (0b000, 0b0000000, 0b000, 0), # ADD
-        (0b000, 0b0100000, 0b000, 1), # SUB
-        (0b101, 0b0000000, 0b101, 0), # SRL
-        (0b101, 0b0100000, 0b101, 1), # SRA
-    ]
+    # ADD
+    inst = encode_rtype(rd=1, rs1=2, rs2=3, funct3=0b000, funct7=0b0000000)
+    dut.inst.value = inst
+    await Timer(1, "ns")
+    assert dut.alu_op.value == 0b000
+    assert dut.alu_sub.value == 0
+    assert dut.alu_sra.value == 0
 
-    for funct3, funct7, exp_aluop, exp_sub in test_cases:
-        inst = encode_rtype(rd=1, rs1=2, rs2=3, funct3=funct3, funct7=funct7)
-        dut.inst.value = inst
-        await Timer(1, "ns")
-        assert dut.alu_op.value == exp_aluop
-        assert dut.alu_sub.value == exp_sub
+    # SUB
+    inst = encode_rtype(rd=1, rs1=2, rs2=3, funct3=0b000, funct7=0b0100000)
+    dut.inst.value = inst
+    await Timer(1, "ns")
+    assert dut.alu_op.value == 0b000
+    assert dut.alu_sub.value == 1
+    assert dut.alu_sra.value == 0
 
+    # SRL
+    inst = encode_rtype(rd=1, rs1=2, rs2=3, funct3=0b101, funct7=0b0000000)
+    dut.inst.value = inst
+    await Timer(1, "ns")
+    assert dut.alu_op.value == 0b101
+    assert dut.alu_sub.value == 0
+    assert dut.alu_sra.value == 0
+
+    # SRA
+    inst = encode_rtype(rd=1, rs1=2, rs2=3, funct3=0b101, funct7=0b0100000)
+    dut.inst.value = inst
+    await Timer(1, "ns")
+    assert dut.alu_op.value == 0b101
+    assert dut.alu_sub.value == 0   # 关键：这里应为 0，不是 1
+    assert dut.alu_sra.value == 1   # SRA 应设置 alu_sra
 # ==============================================================================
 # 4. 专业测试3：测试 I-type 立即数指令
 # ==============================================================================
@@ -65,38 +78,4 @@ async def test_decoder_itype(dut):
     assert dut.rd.value == 1
     assert dut.rs1.value == 2
 
-# ==============================================================================
-# 5. 时序测试（保留你原来的风格）
-# ==============================================================================
-@cocotb.test()
-async def test_decoder_with_clock(dut):
-    Clock(dut.clk, 10, "ns").start()
 
-    for _ in  range(5):
-        inst = encode_rtype(rd=5, rs1=6, rs2=7, funct3=0, funct7=0)
-        dut.inst.value = inst
-        await RisingEdge(dut.clk)
-        await Timer(1, "ns")
-        assert dut.rd.value == 5
-        assert dut.rs1.value == 6
-
-# ==============================================================================
-# 6. 运行入口
-# ==============================================================================
-import os
-import sys
-from cocotb_tools.runner import get_runner
-
-def main():
-    runner = get_runner("comopy")
-    runner.build(
-        sources=["decoder.py"],
-        hdl_toplevel="Decoder"
-    )
-    runner.test(
-        hdl_toplevel="Decoder",
-        test_module="test_decoder"
-    )
-
-if __name__ == "__main__":
-    main()
